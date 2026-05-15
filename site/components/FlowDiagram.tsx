@@ -73,9 +73,29 @@ export function FlowDiagram({ source }: { source: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [fitScale, setFitScale] = useState<number | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const miniRef = useRef<HTMLDivElement>(null);
   const tfRef = useRef<ReactZoomPanPinchContentRef | null>(null);
+
+  const fitToView = useCallback(() => {
+    const wrapper = wrapperRef.current;
+    const svgEl = mainRef.current?.querySelector("svg") as SVGSVGElement | null;
+    if (!wrapper || !svgEl || !tfRef.current) return;
+    const wrapperW = wrapper.clientWidth;
+    const wrapperH = wrapper.clientHeight;
+    const bbox = svgEl.getBBox();
+    if (bbox.width <= 0 || bbox.height <= 0 || wrapperW <= 0 || wrapperH <= 0) return;
+    const PAD = 32;
+    const sx = (wrapperW - PAD * 2) / bbox.width;
+    const sy = (wrapperH - PAD * 2) / bbox.height;
+    const scale = Math.min(sx, sy, 1);
+    const x = (wrapperW - bbox.width * scale) / 2 - bbox.x * scale;
+    const y = (wrapperH - bbox.height * scale) / 2 - bbox.y * scale;
+    tfRef.current.setTransform(x, y, scale, 0);
+    setFitScale(scale);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +130,22 @@ export function FlowDiagram({ source }: { source: string }) {
     miniRef.current.appendChild(clone);
   }, [svg]);
 
+  useEffect(() => {
+    if (!svg) return;
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => fitToView());
+      (raf1 as unknown as { _raf2?: number })._raf2 = raf2;
+    });
+    return () => cancelAnimationFrame(raf1);
+  }, [svg, fitToView]);
+
+  useEffect(() => {
+    if (!svg) return;
+    const onResize = () => fitToView();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [svg, fitToView]);
+
   const onDiagramClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     let el: Element | null = e.target as Element | null;
     while (el && el !== e.currentTarget) {
@@ -130,12 +166,15 @@ export function FlowDiagram({ source }: { source: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative min-h-[520px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner dark:border-zinc-800 dark:bg-zinc-100">
+      <div
+        ref={wrapperRef}
+        className="relative h-[640px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner dark:border-zinc-800 dark:bg-zinc-100"
+      >
         <div
           className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur"
           role="note"
         >
-          Tip: click a box for a description · pinch or Ctrl+scroll to zoom · drag to pan
+          Tip: click a box for a description · pinch / Ctrl+scroll to zoom · drag to pan · double-click to reset
         </div>
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
           <button
@@ -148,10 +187,11 @@ export function FlowDiagram({ source }: { source: string }) {
           </button>
           <button
             type="button"
-            onClick={() => tfRef.current?.resetTransform()}
+            onClick={() => fitToView()}
             className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            aria-label="Fit to view"
           >
-            Reset
+            Fit
           </button>
           <button
             type="button"
@@ -184,30 +224,31 @@ export function FlowDiagram({ source }: { source: string }) {
         {err ? (
           <p className="p-6 text-sm text-red-600">{err}</p>
         ) : !svg ? (
-          <div className="flex min-h-[520px] items-center justify-center">
+          <div className="flex h-full items-center justify-center">
             <p className="text-sm text-zinc-500">Rendering diagram…</p>
           </div>
         ) : (
           <TransformWrapper
-            initialScale={0.85}
-            minScale={0.2}
+            initialScale={fitScale ?? 1}
+            minScale={fitScale ? Math.max(fitScale * 0.6, 0.1) : 0.1}
             maxScale={4}
-            centerOnInit
-            wheel={{ step: 0.12 }}
-            doubleClick={{ disabled: true }}
+            limitToBounds={false}
+            centerZoomedOut={false}
+            wheel={{ step: 0.15 }}
+            doubleClick={{ mode: "reset" }}
             ref={(ref) => {
               tfRef.current = ref;
             }}
           >
             <TransformComponent
               wrapperClass="!w-full !h-full"
-              contentClass="flex min-h-[520px] w-full items-center justify-center p-6"
+              contentClass="!w-auto !h-auto"
             >
               <div
                 ref={mainRef}
                 role="img"
                 aria-label="Trading pipeline Mermaid diagram"
-                className="cursor-grab active:cursor-grabbing [&_svg]:max-w-none"
+                className="cursor-grab active:cursor-grabbing select-none [&_svg]:block [&_svg]:max-w-none"
                 onClick={onDiagramClick}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
