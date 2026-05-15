@@ -5,6 +5,6 @@ This directory is the **Next.js** front door: landing page, **`/flow`** (interac
 **Story, visuals, and “why”** live in the **[root README](../README.md)**. If you are opening this folder to hack UI or content, you only need:
 
 - `npm install` then `npm run dev` from **`site/`**
-- Optional deploy: Vercel **Root Directory = `site`**. Optional env: `NEXT_PUBLIC_SITE_URL` for canonical / OG URLs.
+- Optional deploy: Vercel **Root Directory = `site`**. Set **`NEXT_PUBLIC_SITE_URL`** to **`https://tradebot.followcurly.com`** (production canonical for OG / metadata) once DNS is live.
 
 Everything else (trader, systemd, homelab) is outside this package.

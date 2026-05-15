@@ -20,7 +20,7 @@ If you are here to **follow along**, watch the commits, read the public site, an
 
 | | |
 | --- | --- |
-| **Live public site** | **[Open the docs site](https://ai-trading-bot-facebacons-projects.vercel.app)** — landing, interactive flow diagram, long-form architecture (all sanitized, educational only). |
+| **Live public site** | **[tradebot.followcurly.com](https://tradebot.followcurly.com)** — landing, interactive flow diagram, long-form architecture (all sanitized, educational only). |
 | **This repo** | The **Next.js** app under **`site/`** — that is what deploys. Source for the diagrams and prose; no API keys, no broker secrets, no private paths. |
 
 <p align="center">
