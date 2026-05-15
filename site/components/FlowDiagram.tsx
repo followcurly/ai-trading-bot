@@ -14,6 +14,10 @@ type Panel = { title: string; body: string; module: string };
 const panels = flowPanels as Record<string, Panel>;
 const panelKeySet = new Set(Object.keys(panels));
 
+const MINI_W = 144;
+const MINI_H = 96;
+const MINI_PAD = 6;
+
 const CATEGORY_COLORS: Record<string, { fill: string; ring: string; label: string }> = {
   src: { fill: "bg-blue-500/15", ring: "ring-blue-500/40", label: "External feed" },
   proc: { fill: "bg-emerald-500/15", ring: "ring-emerald-500/40", label: "Pipeline stage" },
@@ -67,16 +71,20 @@ const CATEGORY_FOR_KEY: Record<string, keyof typeof CATEGORY_COLORS> = {
   qv: "src",
 };
 
+const toolbarBtn =
+  "rounded-md border border-zinc-200 bg-white/95 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50 sm:px-2 sm:py-1 sm:text-xs";
+
 export function FlowDiagram({ source }: { source: string }) {
   const uid = useId().replace(/\W/g, "");
   const [svg, setSvg] = useState<string>("");
+  const [miniSvg, setMiniSvg] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [fitScale, setFitScale] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
-  const miniRef = useRef<HTMLDivElement>(null);
+  const miniMountRef = useRef<HTMLDivElement>(null);
   const tfRef = useRef<ReactZoomPanPinchContentRef | null>(null);
 
   const fitToView = useCallback(() => {
@@ -101,6 +109,7 @@ export function FlowDiagram({ source }: { source: string }) {
     let cancelled = false;
     (async () => {
       setErr(null);
+      setMiniSvg("");
       try {
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
@@ -109,8 +118,16 @@ export function FlowDiagram({ source }: { source: string }) {
           theme: "default",
           flowchart: { useMaxWidth: false },
         });
-        const { svg } = await mermaid.render(`mmd${uid}`, source);
-        if (!cancelled) setSvg(svg);
+        const mainId = `mmdMain${uid}`;
+        const miniId = `mmdMini${uid}`;
+        const [mainOut, miniOut] = await Promise.all([
+          mermaid.render(mainId, source),
+          mermaid.render(miniId, source),
+        ]);
+        if (!cancelled) {
+          setSvg(mainOut.svg);
+          setMiniSvg(miniOut.svg);
+        }
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
       }
@@ -121,20 +138,23 @@ export function FlowDiagram({ source }: { source: string }) {
   }, [source, uid]);
 
   useLayoutEffect(() => {
-    if (!mainRef.current || !miniRef.current || !svg) return;
-    const el = mainRef.current.querySelector("svg");
-    if (!el) return;
-    miniRef.current.innerHTML = "";
-    const clone = el.cloneNode(true) as SVGSVGElement;
-    clone.removeAttribute("style");
-    miniRef.current.appendChild(clone);
-  }, [svg]);
+    if (!showMinimap || !miniMountRef.current || !miniSvg) return;
+    miniMountRef.current.innerHTML = miniSvg;
+    const svg = miniMountRef.current.querySelector("svg") as SVGSVGElement | null;
+    if (!svg) return;
+    const bbox = svg.getBBox();
+    if (bbox.width <= 0 || bbox.height <= 0) return;
+    const iw = MINI_W - MINI_PAD * 2;
+    const ih = MINI_H - MINI_PAD * 2;
+    const s = Math.min(iw / bbox.width, ih / bbox.height, 1);
+    svg.style.transformOrigin = "0 0";
+    svg.style.transform = `scale(${s})`;
+  }, [miniSvg, showMinimap]);
 
   useEffect(() => {
     if (!svg) return;
     const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => fitToView());
-      (raf1 as unknown as { _raf2?: number })._raf2 = raf2;
+      requestAnimationFrame(() => fitToView());
     });
     return () => cancelAnimationFrame(raf1);
   }, [svg, fitToView]);
@@ -168,19 +188,23 @@ export function FlowDiagram({ source }: { source: string }) {
     <div className="flex flex-col gap-4">
       <div
         ref={wrapperRef}
-        className="relative h-[640px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner dark:border-zinc-800 dark:bg-zinc-100"
+        className="relative h-[420px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner sm:h-[520px] lg:h-[640px] dark:border-zinc-800 dark:bg-zinc-100"
       >
         <div
-          className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur"
+          className="pointer-events-none absolute left-3 top-3 z-10 max-w-[55%] rounded-lg border border-zinc-200 bg-white/95 px-2 py-1 text-[11px] font-medium text-zinc-700 shadow-sm backdrop-blur sm:max-w-none sm:px-2.5 sm:text-xs"
           role="note"
         >
-          Tip: click a box for a description · pinch / Ctrl+scroll to zoom · drag to pan · double-click to reset
+          <span className="sm:hidden">Tap a box · pinch to zoom</span>
+          <span className="hidden sm:inline">
+            Tip: click a box for a description · pinch / Ctrl+scroll to zoom · drag to pan ·
+            double-click to reset
+          </span>
         </div>
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1 sm:gap-1.5">
           <button
             type="button"
             onClick={() => tfRef.current?.zoomOut()}
-            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            className={toolbarBtn}
             aria-label="Zoom out"
           >
             −
@@ -188,7 +212,7 @@ export function FlowDiagram({ source }: { source: string }) {
           <button
             type="button"
             onClick={() => fitToView()}
-            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            className={toolbarBtn}
             aria-label="Fit to view"
           >
             Fit
@@ -196,7 +220,7 @@ export function FlowDiagram({ source }: { source: string }) {
           <button
             type="button"
             onClick={() => tfRef.current?.zoomIn()}
-            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            className={toolbarBtn}
             aria-label="Zoom in"
           >
             +
@@ -204,7 +228,7 @@ export function FlowDiagram({ source }: { source: string }) {
           <button
             type="button"
             onClick={() => setShowMinimap((v) => !v)}
-            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            className={`${toolbarBtn} hidden sm:inline-flex`}
             aria-pressed={showMinimap}
           >
             {showMinimap ? "Hide map" : "Map"}
@@ -212,12 +236,12 @@ export function FlowDiagram({ source }: { source: string }) {
         </div>
         {showMinimap ? (
           <div
-            className="pointer-events-none absolute bottom-3 right-3 z-10 h-24 w-36 overflow-hidden rounded-md border border-zinc-200 bg-white/95 shadow-sm"
+            className="pointer-events-none absolute bottom-3 right-3 z-10 hidden h-24 w-36 overflow-hidden rounded-md border border-zinc-200 bg-white/95 shadow-sm md:block"
             aria-hidden
           >
             <div
-              ref={miniRef}
-              className="flex h-full w-full items-start justify-start [&>svg]:h-auto [&>svg]:max-w-none [&>svg]:origin-top-left [&>svg]:scale-[0.12]"
+              ref={miniMountRef}
+              className="flex h-full w-full items-start justify-start overflow-hidden p-1.5 [&_svg]:block [&_svg]:max-w-none"
             />
           </div>
         ) : null}
@@ -240,15 +264,12 @@ export function FlowDiagram({ source }: { source: string }) {
               tfRef.current = ref;
             }}
           >
-            <TransformComponent
-              wrapperClass="!w-full !h-full"
-              contentClass="!w-auto !h-auto"
-            >
+            <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-auto !h-auto">
               <div
                 ref={mainRef}
                 role="img"
                 aria-label="Trading pipeline Mermaid diagram"
-                className="cursor-grab active:cursor-grabbing select-none [&_svg]:block [&_svg]:max-w-none"
+                className="cursor-grab select-none active:cursor-grabbing [&_svg]:block [&_svg]:max-w-none"
                 onClick={onDiagramClick}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
@@ -258,7 +279,7 @@ export function FlowDiagram({ source }: { source: string }) {
       </div>
 
       <aside
-        className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+        className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5 dark:border-zinc-800 dark:bg-zinc-900"
         aria-live="polite"
       >
         <div className="mb-3 flex items-center justify-between gap-2">
