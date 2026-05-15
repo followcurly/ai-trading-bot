@@ -138,8 +138,7 @@ export function FlowDiagram({ source }: { source: string }) {
   }, [source, uid]);
 
   useLayoutEffect(() => {
-    if (!showMinimap || !miniMountRef.current || !miniSvg) return;
-    miniMountRef.current.innerHTML = miniSvg;
+    if (!showMinimap || !miniSvg || !miniMountRef.current) return;
     const svg = miniMountRef.current.querySelector("svg") as SVGSVGElement | null;
     if (!svg) return;
     const bbox = svg.getBBox();
@@ -191,7 +190,7 @@ export function FlowDiagram({ source }: { source: string }) {
         className="relative h-[420px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner sm:h-[520px] lg:h-[640px] dark:border-zinc-800 dark:bg-zinc-100"
       >
         <div
-          className="pointer-events-none absolute left-3 top-3 z-10 max-w-[55%] rounded-lg border border-zinc-200 bg-white/95 px-2 py-1 text-[11px] font-medium text-zinc-700 shadow-sm backdrop-blur sm:max-w-none sm:px-2.5 sm:text-xs"
+          className="pointer-events-none absolute left-3 top-3 z-30 max-w-[55%] rounded-lg border border-zinc-200 bg-white/95 px-2 py-1 text-[11px] font-medium text-zinc-700 shadow-sm backdrop-blur sm:max-w-none sm:px-2.5 sm:text-xs"
           role="note"
         >
           <span className="sm:hidden">Tap a box · pinch to zoom</span>
@@ -200,7 +199,7 @@ export function FlowDiagram({ source }: { source: string }) {
             double-click to reset
           </span>
         </div>
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1 sm:gap-1.5">
+        <div className="absolute right-3 top-3 z-30 flex items-center gap-1 sm:gap-1.5">
           <button
             type="button"
             onClick={() => tfRef.current?.zoomOut()}
@@ -234,17 +233,6 @@ export function FlowDiagram({ source }: { source: string }) {
             {showMinimap ? "Hide map" : "Map"}
           </button>
         </div>
-        {showMinimap ? (
-          <div
-            className="pointer-events-none absolute bottom-3 right-3 z-10 hidden h-24 w-36 overflow-hidden rounded-md border border-zinc-200 bg-white/95 shadow-sm md:block"
-            aria-hidden
-          >
-            <div
-              ref={miniMountRef}
-              className="flex h-full w-full items-start justify-start overflow-hidden p-1.5 [&_svg]:block [&_svg]:max-w-none"
-            />
-          </div>
-        ) : null}
         {err ? (
           <p className="p-6 text-sm text-red-600">{err}</p>
         ) : !svg ? (
@@ -276,6 +264,18 @@ export function FlowDiagram({ source }: { source: string }) {
             </TransformComponent>
           </TransformWrapper>
         )}
+        {showMinimap && miniSvg ? (
+          <div
+            className="pointer-events-none absolute bottom-3 right-3 z-20 hidden h-24 w-36 overflow-hidden rounded-md border border-zinc-200 bg-white/95 shadow-sm md:block"
+            aria-hidden
+          >
+            <div
+              ref={miniMountRef}
+              className="flex h-full w-full items-start justify-start overflow-hidden p-1.5 [&_svg]:block [&_svg]:max-w-none"
+              dangerouslySetInnerHTML={{ __html: miniSvg }}
+            />
+          </div>
+        ) : null}
       </div>
 
       <aside
