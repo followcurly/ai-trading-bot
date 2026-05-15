@@ -12,8 +12,8 @@
   <rect width="920" height="220" rx="16" fill="url(#bg)" stroke="#e4e4e7" stroke-width="1"/>
   <rect x="32" y="32" width="4" height="156" rx="2" fill="url(#accent)"/>
   <text x="56" y="88" font-family="ui-sans-serif, system-ui, sans-serif" font-size="42" font-weight="800" fill="#18181b">AI trading bot</text>
-  <text x="56" y="132" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="500" fill="#52525b">Paper-first · pipeline-first · build in public</text>
-  <text x="56" y="172" font-family="ui-monospace, monospace" font-size="14" fill="#71717a">regime ’ snapshot ’ model ’ risk ’ execute ’ journal</text>
+  <text x="56" y="132" font-family="ui-sans-serif, system-ui, sans-serif" font-size="22" font-weight="500" fill="#52525b">Paper-first &#183; pipeline-first &#183; build in public</text>
+  <text x="56" y="172" font-family="ui-monospace, monospace" font-size="14" fill="#71717a">regime &#183; snapshot &#183; model &#183; risk &#183; execute &#183; journal</text>
   <circle cx="820" cy="60" r="8" fill="#22c55e" opacity="0.9"/>
-  <text x="838" y="65" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#3f3f46">homelab · learning</text>
+  <text x="838" y="65" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#3f3f46">homelab &#183; learning</text>
 </svg>

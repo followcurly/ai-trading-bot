@@ -5,22 +5,23 @@
     </marker>
   </defs>
   <rect width="920" height="120" rx="12" fill="#fafafa" stroke="#e4e4e7"/>
-  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#3f3f46">
+  <!-- Row spans x=24..730 (706px); center in 920: offset (920-706)/2 = 107 -->
+  <g transform="translate(107,0)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#3f3f46">
     <rect x="24" y="36" width="100" height="48" rx="8" fill="#eef2ff" stroke="#c7d2fe"/>
     <text x="74" y="66" text-anchor="middle">Regime</text>
     <path d="M 132 60 L 152 60" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
     <rect x="158" y="36" width="100" height="48" rx="8" fill="#ecfdf5" stroke="#a7f3d0"/>
     <text x="208" y="66" text-anchor="middle">Snapshot</text>
-    <path d="M 266 60 L 286 60" stroke="#a1a1aa" stroke-width="2"/>
+    <path d="M 266 60 L 286 60" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
     <rect x="292" y="36" width="88" height="48" rx="8" fill="#fff7ed" stroke="#fed7aa"/>
     <text x="336" y="66" text-anchor="middle">Brain</text>
-    <path d="M 388 60 L 408 60" stroke="#a1a1aa" stroke-width="2"/>
+    <path d="M 388 60 L 408 60" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
     <rect x="414" y="36" width="72" height="48" rx="8" fill="#fef3c7" stroke="#fde68a"/>
     <text x="450" y="66" text-anchor="middle">Risk</text>
-    <path d="M 492 60 L 512 60" stroke="#a1a1aa" stroke-width="2"/>
+    <path d="M 492 60 L 512 60" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
     <rect x="518" y="36" width="92" height="48" rx="8" fill="#fce7f3" stroke="#fbcfe8"/>
     <text x="564" y="66" text-anchor="middle">Execute</text>
-    <path d="M 616 60 L 636 60" stroke="#a1a1aa" stroke-width="2"/>
+    <path d="M 616 60 L 636 60" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
     <rect x="642" y="36" width="88" height="48" rx="8" fill="#f4f4f5" stroke="#d4d4d8"/>
     <text x="686" y="66" text-anchor="middle">Journal</text>
   </g>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/readme/banner.svg" alt="AI trading bot — paper-first, pipeline-first, build in public" width="100%" />
+  <img src="docs/readme/banner.png" alt="AI trading bot — paper-first, pipeline-first, build in public" width="100%" />
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@ If you are here to **follow along**, watch the commits, read the public site, an
 | **This repo** | The **Next.js** app under **`site/`** — that is what deploys. Source for the diagrams and prose; no API keys, no broker secrets, no private paths. |
 
 <p align="center">
-  <img src="docs/readme/pipeline-strip.svg" alt="Pipeline: regime to journal" width="100%" />
+  <img src="docs/readme/pipeline-strip.png" alt="Pipeline: regime to journal" width="100%" />
 </p>
 
 **What you will see on the site**
