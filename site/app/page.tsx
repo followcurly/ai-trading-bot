@@ -7,7 +7,7 @@ const features = [
     href: "/flow",
     badge: "Interactive",
     title: "Pipeline flow",
-    body: "Pan, zoom, and click any node in a Mermaid diagram of the per-cycle pipeline — external feeds, regime, snapshot, brain, risk, executor, and sinks.",
+    body: "Pan, zoom, and click any node in a Mermaid diagram of the per-cycle pipeline: external feeds, regime, snapshot, brain, risk, executor, and sinks.",
     cta: "Open the diagram",
     dotAccent: "bg-indigo-500",
   },
@@ -49,12 +49,13 @@ export default function Home() {
               <span className="italic text-zinc-800 dark:text-zinc-200">pipeline-first.</span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-zinc-700 dark:text-zinc-300">
-              Curated diagrams and prose for a research-grade equity + options stack: cross-asset
-              regime, per-symbol snapshots, model decisions, risk gating, broker execution, and
-              durable journaling.{" "}
-              <span className="text-zinc-500 dark:text-zinc-400">
-                No live account. No live secrets. No live signals.
-              </span>
+              Here&apos;s how the stack actually trades: a cross-asset regime call, a watchlist
+              built for that cycle, a fat per-symbol snapshot (bars, enrichers, data-quality
+              nagging), a small model pitching a JSON-shaped move, a risk engine that can veto or
+              soften it, an executor that talks to the broker, and a journal that remembers every
+              bruise in SQLite + JSONL. It&apos;s wired for paper first as a science project and a
+              spectator sport, and I&apos;m genuinely curious how much hypothetical money it can
+              set on fire over a long enough timeline if we keep the lights on.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
