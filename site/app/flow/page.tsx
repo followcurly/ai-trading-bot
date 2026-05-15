@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
 import { FlowDiagram } from "@/components/FlowDiagram";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteNav } from "@/components/SiteNav";
 
 export const metadata: Metadata = {
@@ -13,8 +14,7 @@ export const metadata: Metadata = {
 export default function FlowPage() {
   const source = fs.readFileSync(path.join(process.cwd(), "content", "flow.mmd"), "utf8");
   return (
-    <div className="relative isolate min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[28rem] bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-transparent blur-3xl" />
+    <div className="relative isolate min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <SiteNav />
         <header className="mb-6 max-w-3xl space-y-2">
@@ -33,6 +33,7 @@ export default function FlowPage() {
           </p>
         </header>
         <FlowDiagram source={source} />
+        <SiteFooter />
       </div>
     </div>
   );
