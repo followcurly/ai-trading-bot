@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import {
+  TransformComponent,
+  TransformWrapper,
+  type ReactZoomPanPinchContentRef,
+} from "react-zoom-pan-pinch";
 import flowPanels from "@/content/flow-panels.json";
 import { resolvePanelKey } from "@/lib/resolve-panel-key";
 
@@ -10,13 +14,68 @@ type Panel = { title: string; body: string; module: string };
 const panels = flowPanels as Record<string, Panel>;
 const panelKeySet = new Set(Object.keys(panels));
 
+const CATEGORY_COLORS: Record<string, { fill: string; ring: string; label: string }> = {
+  src: { fill: "bg-blue-500/15", ring: "ring-blue-500/40", label: "External feed" },
+  proc: { fill: "bg-emerald-500/15", ring: "ring-emerald-500/40", label: "Pipeline stage" },
+  brain: { fill: "bg-violet-500/20", ring: "ring-violet-500/50", label: "Brain / regime" },
+  risk: { fill: "bg-orange-500/15", ring: "ring-orange-500/40", label: "Risk policy" },
+  exec: { fill: "bg-rose-500/15", ring: "ring-rose-500/40", label: "Executor" },
+  store: { fill: "bg-indigo-500/15", ring: "ring-indigo-500/40", label: "Storage" },
+  sink: { fill: "bg-zinc-500/15", ring: "ring-zinc-500/40", label: "Sink" },
+  sched: { fill: "bg-amber-500/15", ring: "ring-amber-500/40", label: "Schedule" },
+};
+
+const CATEGORY_FOR_KEY: Record<string, keyof typeof CATEGORY_COLORS> = {
+  sched: "sched",
+  reg: "brain",
+  wl: "proc",
+  feed: "proc",
+  enr: "proc",
+  snap: "proc",
+  trd: "brain",
+  risk: "risk",
+  exe: "exec",
+  journal: "proc",
+  alp: "sink",
+  db: "store",
+  jsl: "store",
+  web: "sink",
+  hc: "sink",
+  met: "store",
+  eodMD: "store",
+  crSun: "sched",
+  wrpy: "brain",
+  mdLatest: "store",
+  blogUI: "sink",
+  fbmd: "proc",
+  aMD: "src",
+  aTR: "src",
+  aOPT: "src",
+  yfin: "src",
+  rss: "src",
+  fred: "src",
+  vix: "src",
+  kal: "src",
+  poly: "src",
+  cnnfg: "src",
+  stw: "src",
+  cotF: "src",
+  edgar: "src",
+  fh: "src",
+  mktx: "src",
+  rdd: "src",
+  qv: "src",
+};
+
 export function FlowDiagram({ source }: { source: string }) {
   const uid = useId().replace(/\W/g, "");
   const [svg, setSvg] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showMinimap, setShowMinimap] = useState(true);
   const mainRef = useRef<HTMLDivElement>(null);
   const miniRef = useRef<HTMLDivElement>(null);
+  const tfRef = useRef<ReactZoomPanPinchContentRef | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,13 +83,11 @@ export function FlowDiagram({ source }: { source: string }) {
       setErr(null);
       try {
         const mermaid = (await import("mermaid")).default;
-        const dark =
-          typeof window !== "undefined" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "loose",
-          theme: dark ? "dark" : "default",
+          theme: "default",
+          flowchart: { useMaxWidth: false },
         });
         const { svg } = await mermaid.render(`mmd${uid}`, source);
         if (!cancelled) setSvg(svg);
@@ -68,41 +125,83 @@ export function FlowDiagram({ source }: { source: string }) {
   }, []);
 
   const panel = selected ? panels[selected] : null;
+  const cat = selected ? CATEGORY_FOR_KEY[selected] : undefined;
+  const catTone = cat ? CATEGORY_COLORS[cat] : null;
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-      <div className="relative min-h-[420px] flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="flex flex-col gap-4">
+      <div className="relative min-h-[520px] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-inner dark:border-zinc-800 dark:bg-zinc-100">
         <div
-          className="absolute left-3 top-3 z-10 flex flex-wrap gap-2 rounded-lg border border-zinc-200 bg-white/90 px-2 py-1 text-xs text-zinc-600 shadow-sm backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-300"
+          className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm backdrop-blur"
           role="note"
         >
-          <span>Tip: click a box for a short description. Pinch or Ctrl+scroll to zoom.</span>
+          Tip: click a box for a description · pinch or Ctrl+scroll to zoom · drag to pan
         </div>
-        <div
-          className="absolute bottom-2 right-2 z-10 h-28 w-40 overflow-hidden rounded-md border border-zinc-200 bg-white/90 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/90"
-          aria-hidden
-        >
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => tfRef.current?.zoomOut()}
+            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => tfRef.current?.resetTransform()}
+            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => tfRef.current?.zoomIn()}
+            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMinimap((v) => !v)}
+            className="rounded-md border border-zinc-200 bg-white/95 px-2 py-1 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50"
+            aria-pressed={showMinimap}
+          >
+            {showMinimap ? "Hide map" : "Map"}
+          </button>
+        </div>
+        {showMinimap ? (
           <div
-            ref={miniRef}
-            className="flex h-full w-full items-start justify-start [&>svg]:h-auto [&>svg]:max-w-none [&>svg]:origin-top-left [&>svg]:scale-[0.14]"
-          />
-        </div>
+            className="pointer-events-none absolute bottom-3 right-3 z-10 h-24 w-36 overflow-hidden rounded-md border border-zinc-200 bg-white/95 shadow-sm"
+            aria-hidden
+          >
+            <div
+              ref={miniRef}
+              className="flex h-full w-full items-start justify-start [&>svg]:h-auto [&>svg]:max-w-none [&>svg]:origin-top-left [&>svg]:scale-[0.12]"
+            />
+          </div>
+        ) : null}
         {err ? (
-          <p className="p-6 text-sm text-red-600 dark:text-red-400">{err}</p>
+          <p className="p-6 text-sm text-red-600">{err}</p>
         ) : !svg ? (
-          <p className="p-6 text-sm text-zinc-500">Rendering diagram…</p>
+          <div className="flex min-h-[520px] items-center justify-center">
+            <p className="text-sm text-zinc-500">Rendering diagram…</p>
+          </div>
         ) : (
           <TransformWrapper
-            initialScale={0.9}
-            minScale={0.25}
-            maxScale={3.5}
+            initialScale={0.85}
+            minScale={0.2}
+            maxScale={4}
             centerOnInit
             wheel={{ step: 0.12 }}
             doubleClick={{ disabled: true }}
+            ref={(ref) => {
+              tfRef.current = ref;
+            }}
           >
             <TransformComponent
-              wrapperClass="!w-full !h-full min-h-[420px]"
-              contentClass="flex min-h-[420px] w-full items-center justify-center p-6"
+              wrapperClass="!w-full !h-full"
+              contentClass="flex min-h-[520px] w-full items-center justify-center p-6"
             >
               <div
                 ref={mainRef}
@@ -116,12 +215,13 @@ export function FlowDiagram({ source }: { source: string }) {
           </TransformWrapper>
         )}
       </div>
+
       <aside
-        className="w-full shrink-0 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:w-[min(100%,380px)]"
+        className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
         aria-live="polite"
       >
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
             Node detail
           </h2>
           {selected ? (
@@ -135,20 +235,53 @@ export function FlowDiagram({ source }: { source: string }) {
           ) : null}
         </div>
         {panel ? (
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{panel.title}</h3>
-            <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{panel.body}</p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              <span className="font-medium text-zinc-600 dark:text-zinc-300">Module:</span>{" "}
-              {panel.module}
-            </p>
+          <div className="grid gap-4 md:grid-cols-[1fr_280px]">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  {panel.title}
+                </h3>
+                {catTone ? (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-800 ring-1 ${catTone.fill} ${catTone.ring} dark:text-zinc-100`}
+                  >
+                    {catTone.label}
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                {panel.body}
+              </p>
+            </div>
+            <div className="self-start rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300">
+              <div className="mb-1 font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                Module
+              </div>
+              <code className="font-mono text-[12.5px] text-zinc-800 dark:text-zinc-100">
+                {panel.module}
+              </code>
+            </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Select a node in the diagram to see curated notes. The dashed edge from{" "}
-            <strong>regime</strong> to <strong>snapshot builder</strong> highlights benchmark equity
-            slices (e.g. broad index ETFs) used when building cross-asset context.
-          </p>
+          <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <p>
+              Click a box in the diagram to see curated notes. The dashed edge from{" "}
+              <strong className="text-zinc-800 dark:text-zinc-100">regime</strong> to{" "}
+              <strong className="text-zinc-800 dark:text-zinc-100">snapshot builder</strong>{" "}
+              highlights benchmark equity slices (e.g. broad index ETFs) used when assembling
+              cross-asset context.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              {Object.entries(CATEGORY_COLORS).map(([key, c]) => (
+                <span
+                  key={key}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-800 ring-1 ${c.fill} ${c.ring} dark:text-zinc-100`}
+                >
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
       </aside>
     </div>
