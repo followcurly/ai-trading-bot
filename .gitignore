@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/cache
+.yarn/install-state.gz
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Production
+build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel/
+
+# Editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

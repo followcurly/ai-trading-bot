@@ -1,0 +1,104 @@
+%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 28, "rankSpacing": 55}, "themeVariables": {"fontSize": "13px"}}}%%
+flowchart LR
+  sched(["APScheduler<br/>4× daily + optional extra<br/>RTH gate · cycle_summary<br/>EOD 16:05 ET · trail exits<br/><i>main.run_cycle</i>"])
+
+  subgraph SRC["1 · External feeds"]
+    direction TB
+    aMD["Alpaca Market Data<br/>120d daily bars · IEX snapshot"]
+    aTR["Alpaca Trading API<br/>account · positions · screener"]
+    aOPT["Alpaca Options<br/>ATM ± strike ring · IV / mid"]
+    yfin["yfinance<br/>earnings calendar"]
+    rss["RSS<br/>Yahoo per-symbol headlines"]
+    fred["FRED<br/>DGS10 · DGS2 · CPI · unrate"]
+    vix["VIX<br/>level + regime"]
+    kal["Kalshi<br/>Fed · CPI · GDP series"]
+    poly["Polymarket<br/>macro by 24h volume"]
+    cnnfg["CNN Fear &amp; Greed<br/>equity 0–100 score"]
+    stw["StockTwits<br/>per-symbol stream"]
+    cotF["CFTC COT<br/>spec net positioning"]
+    edgar["SEC EDGAR<br/>8-K · Form 4"]
+    fh["Finnhub<br/>earnings · recs · sentiment"]
+    mktx["Marketaux<br/>news + entity sentiment"]
+    rdd["Reddit<br/>OAuth search · post titles"]
+    qv["QuiverQuant<br/>congress · lobbying (API key)"]
+  end
+
+  subgraph PIPE["2 · Pipeline (pre-cycle + per symbol)"]
+    direction TB
+    reg["regime.py<br/>get_market_regime<br/>TTL · cross-asset Haiku"]
+    wl["watchlist.py<br/>anchors · bearish hedge<br/>screener · held uncapped"]
+    feed["data_feed.get_market_snapshot<br/>bars → indicators · data_quality<br/>sector · portfolio_context"]
+    enr["enrichment + macro + options<br/>+ sentiment · cot · edgar · finnhub · marketaux<br/>reddit · quiverquant"]
+    snap[["market snapshot dict<br/>enrichers + data_quality"]]
+    subgraph BRN["claude_brain — Haiku trader"]
+      direction TB
+      trd["Trader<br/>Claude Haiku · JSON decision"]
+    end
+    risk["risk_engine.validate<br/>PDT · sector caps · min DTE · overnight<br/>conf floor · HALT vs soft policy"]
+    exe["executor.execute<br/>long_stock bracket (GTC)<br/>options: conviction-sized qty"]
+    journal["journal.write_journal_entry<br/>build_logic_json + debate"]
+  end
+
+  subgraph SINK["3 · Sinks"]
+    direction TB
+    alp["Alpaca paper account<br/>orders + fills"]
+    db[("SQLite<br/>trades + risk_state")]
+    jsl[("JSONL append log")]
+    web["FastAPI viewer<br/>read-only cycles · positions · flow"]
+    hc["Healthchecks.io<br/>cycle heartbeat"]
+    met[("optional metrics.jsonl<br/>per cycle_summary")]
+    eodMD[("LATEST_EOD.md<br/>eod-YYYY-MM-DD.md")]
+  end
+
+  sched --> reg
+  reg --> wl
+  reg -.->|market_regime| snap
+  reg -.->|SPY · QQQ benchmark slices| feed
+  wl -->|symbols| feed
+  aMD --> feed
+  aTR --> feed
+  aOPT --> enr
+  yfin --> enr
+  rss --> enr
+  fred --> enr
+  vix --> enr
+  kal --> enr
+  poly --> enr
+  cnnfg --> enr
+  stw --> enr
+  cotF --> enr
+  edgar --> enr
+  fh --> enr
+  mktx --> enr
+  rdd --> enr
+  qv --> enr
+  feed --> snap
+  enr --> snap
+  snap --> trd
+  trd -->|JSON| risk
+  risk -->|BUY / SELL| exe
+  risk -.->|HOLD / HALT| journal
+  exe -->|order_id| alp
+  exe --> journal
+  trd -.->|debate in logic_json| journal
+  journal --> db
+  journal --> jsl
+  db --> web
+  sched -.->|ok / fail| hc
+  sched -.->|cycle_summary| met
+  sched -.->|16:05 ET EOD + trail exits| eodMD
+
+  subgraph WKY["4 · Weekly report and blog"]
+    direction TB
+    crSun["cron Sun<br/>weekly_review"]
+    wrpy["weekly_review.py<br/>Sonnet plus stats"]
+    mdLatest["LATEST_REVIEW.md<br/>reports directory"]
+    blogUI["Dashboard /blog<br/>human-readable post + charts"]
+    fbmd["TRADER_FEEDBACK.md<br/>brain context"]
+    crSun --> wrpy --> mdLatest
+    wrpy --> blogUI
+    wrpy --> fbmd
+  end
+  jsl -.->|JSON lines| wrpy
+  db -.->|SQLite rows| wrpy
+  fbmd -.->|optional read| trd
