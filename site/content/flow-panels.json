@@ -1,0 +1,222 @@
+{
+  "sched": {
+    "title": "Schedule",
+    "body": "Base cron four times per market day (ET, weekdays) with small jitter. Optional extra ET slots can be enabled. A position-health interval can run trail giveback and related automation without an LLM. An end-of-day summary runs after the regular session. The main cycle is gated to regular trading hours.",
+    "module": "main entry (scheduler)"
+  },
+  "reg": {
+    "title": "Regime (pre-brain)",
+    "body": "One small-model JSON verdict per TTL window using cross-asset inputs: benchmark equity slices (e.g. broad index ETFs), volatility, macro, prediction markets, positioning, sentiment, and similar feeds. Bearish conviction above a threshold can merge inverse or volatility tickers into the dynamic watchlist when not overridden by a static list. The verdict attaches to every per-symbol snapshot for that cycle.",
+    "module": "regime module"
+  },
+  "wl": {
+    "title": "Watchlist",
+    "body": "Builds the symbol universe from a capped screener, fixed anchors, optional bearish hedge names from the regime verdict, and optionally every open underlying. Cached by regime fingerprint with optional quality filters.",
+    "module": "watchlist module"
+  },
+  "feed": {
+    "title": "Snapshot builder",
+    "body": "Historical daily bars plus custom indicators and live fields; portfolio context and sector hints; data-quality flags; optional cycle-level regime object when the main loop passes it in. The regime step also consults benchmark slices via the same snapshot machinery for cross-asset context.",
+    "module": "data feed + indicators"
+  },
+  "enr": {
+    "title": "Enrichment layer",
+    "body": "Mutates the snapshot with earnings, news, macro, volatility, prediction markets, sentiment, positioning, filings, optional news APIs, social signals, and options context.",
+    "module": "data feed orchestration"
+  },
+  "snap": {
+    "title": "Market snapshot",
+    "body": "Single dict passed to the model: price, indicators, account, position, portfolio context, data quality, optional sector label, optional regime verdict, and enrichers.",
+    "module": "data feed"
+  },
+  "trd": {
+    "title": "Trader (Haiku)",
+    "body": "Directional persona proposes one structured JSON trade per symbol. Parse failures auto-retry then fall back to a safe hold shell so one bad response cannot halt the cycle.",
+    "module": "brain module"
+  },
+  "risk": {
+    "title": "Risk engine",
+    "body": "Tier-1 structural safety (loss limits, malformed fields, allowlists). Tier-2 policy: confidence floor, cooldowns, pattern-day-trade ceiling, sector caps, earnings and technical filters, option minimum days to expiry, overnight holds, intraday giveback halts. A soft policy mode can downgrade some tier-2 blocks to warnings for experiments.",
+    "module": "risk engine"
+  },
+  "exe": {
+    "title": "Executor",
+    "body": "Bracket GTC stock buys; simple market sells to close; single-leg options with liquidity checks on bid/ask when enabled.",
+    "module": "executor + options helper"
+  },
+  "journal": {
+    "title": "Journal",
+    "body": "SQLite row plus JSONL line with snapshot excerpt, raw and final decision, execute result, and debate metadata. Logs can rotate by max size with retention of rotated siblings.",
+    "module": "journal module"
+  },
+  "aMD": {
+    "title": "Alpaca market data",
+    "body": "Historical daily bars and live snapshot for price, volume, VWAP, and previous close.",
+    "module": "data feed + broker runtime"
+  },
+  "aTR": {
+    "title": "Alpaca trading API",
+    "body": "Account equity, positions, day-trade count, and screener client for the dynamic watchlist.",
+    "module": "broker runtime + watchlist"
+  },
+  "aOPT": {
+    "title": "Alpaca options",
+    "body": "Nearest-expiry at-the-money ring with implied volatility and mid for options-aware decisions.",
+    "module": "options execution helper"
+  },
+  "yfin": {
+    "title": "yfinance",
+    "body": "Earnings window hints per symbol (cached).",
+    "module": "enrichment"
+  },
+  "rss": {
+    "title": "Headlines",
+    "body": "RSS headlines per symbol or configured feeds (cached).",
+    "module": "enrichment"
+  },
+  "fred": {
+    "title": "FRED macro",
+    "body": "Treasury curve, inflation, and unemployment series when an API key is configured.",
+    "module": "macro module"
+  },
+  "vix": {
+    "title": "VIX",
+    "body": "Spot level and a simple volatility regime label from recent closes.",
+    "module": "macro module"
+  },
+  "kal": {
+    "title": "Kalshi",
+    "body": "Macro series markets via public API.",
+    "module": "prediction markets + macro"
+  },
+  "poly": {
+    "title": "Polymarket",
+    "body": "High-volume macro-tilted markets from a public API.",
+    "module": "prediction markets + macro"
+  },
+  "cnnfg": {
+    "title": "CNN Fear & Greed",
+    "body": "Equity sentiment index 0–100 (cached).",
+    "module": "sentiment + data feed"
+  },
+  "stw": {
+    "title": "StockTwits",
+    "body": "Retail stream bullish/bearish mix for the active symbol.",
+    "module": "sentiment + data feed"
+  },
+  "cotF": {
+    "title": "CFTC COT",
+    "body": "Weekly non-commercial net positioning for a small futures panel.",
+    "module": "COT + data feed"
+  },
+  "edgar": {
+    "title": "SEC EDGAR",
+    "body": "Recent filings for the symbol (cached).",
+    "module": "EDGAR + data feed"
+  },
+  "fh": {
+    "title": "Finnhub",
+    "body": "Optional earnings calendar, recommendations, and news sentiment when configured with an API key.",
+    "module": "Finnhub client + data feed"
+  },
+  "mktx": {
+    "title": "Marketaux",
+    "body": "Optional headlines with entity sentiment when configured with an API key.",
+    "module": "Marketaux + data feed"
+  },
+  "rdd": {
+    "title": "Reddit",
+    "body": "Optional OAuth search hits mentioning the symbol when OAuth credentials are configured.",
+    "module": "reddit signal module"
+  },
+  "qv": {
+    "title": "QuiverQuant",
+    "body": "Congressional trading and lobbying endpoints with token auth per vendor docs.",
+    "module": "QuiverQuant client"
+  },
+  "alp": {
+    "title": "Broker",
+    "body": "Paper or live account receiving orders.",
+    "module": "broker API"
+  },
+  "db": {
+    "title": "SQLite",
+    "body": "Trades, risk state, and trail state tables. Connections use WAL mode and a busy timeout so a read-only viewer can stay open while the bot writes.",
+    "module": "database helper"
+  },
+  "jsl": {
+    "title": "JSONL log",
+    "body": "Append-only line log mirroring row metadata with optional rotation and pruning.",
+    "module": "journal module"
+  },
+  "web": {
+    "title": "Operator viewer",
+    "body": "Read-only web app for cycles, flow diagram, and positions — separate from this public educational site.",
+    "module": "FastAPI app"
+  },
+  "hc": {
+    "title": "Healthchecks.io",
+    "body": "End-of-cycle success/failure ping for dead-man monitoring.",
+    "module": "main entry"
+  },
+  "met": {
+    "title": "Metrics JSONL",
+    "body": "Optional path appends one JSON object per finished cycle with timing and compact regime summary.",
+    "module": "main entry"
+  },
+  "eodMD": {
+    "title": "EOD digest",
+    "body": "After the cash session, aggregates journal rows and account equity into stable and dated markdown reports.",
+    "module": "main entry + reports directory"
+  },
+  "crSun": {
+    "title": "Weekly cron",
+    "body": "Example Sunday job entrypoint for the weekly review.",
+    "module": "cron / weekly review"
+  },
+  "wrpy": {
+    "title": "Weekly review",
+    "body": "Aggregates JSONL and SQLite, attaches an operating snapshot for prompt context, calls a larger model once, and writes review markdown, feedback bullets, and blog artifacts.",
+    "module": "weekly review + reporting"
+  },
+  "mdLatest": {
+    "title": "Weekly report file",
+    "body": "Stable latest-review markdown plus dated copies and JSON sidecar.",
+    "module": "reports directory"
+  },
+  "blogUI": {
+    "title": "Blog page",
+    "body": "Human-readable weekly post with charts in the operator viewer.",
+    "module": "web app + blog generator"
+  },
+  "fbmd": {
+    "title": "Trader feedback",
+    "body": "Short bullets after weekly review; the brain prepends when fresh for historical critique (not live market data).",
+    "module": "brain module"
+  },
+  "SRC": {
+    "title": "External feeds",
+    "body": "Logical grouping of third-party and broker-provided inputs.",
+    "module": "—"
+  },
+  "PIPE": {
+    "title": "Pipeline",
+    "body": "Pre-cycle regime and watchlist, per-symbol snapshot build, model decision, risk, execution, and journaling.",
+    "module": "—"
+  },
+  "SINK": {
+    "title": "Sinks",
+    "body": "Persistence, metrics, external monitoring, and operator-facing surfaces.",
+    "module": "—"
+  },
+  "WKY": {
+    "title": "Weekly subgraph",
+    "body": "Offline aggregation and long-form reporting path.",
+    "module": "—"
+  },
+  "BRN": {
+    "title": "Brain subgraph",
+    "body": "Structured JSON decision inside the per-symbol pipeline.",
+    "module": "—"
+  }
+}
