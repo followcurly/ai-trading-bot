@@ -82,6 +82,22 @@ export default function Home() {
               <strong>Disclaimer:</strong> educational documentation only. This is not financial
               advice, not a live trading interface, and not an offer to provide trading services.
             </div>
+
+            <Link
+              href="/research"
+              className="block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+                v1 paper receipts
+              </p>
+              <p className="mt-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                $100k → $84.2k (−15.8%) in ~3 months
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                4,651 cycles · 439 orders · options-heavy · full charts and postmortem on the Method
+                page →
+              </p>
+            </Link>
           </section>
 
           <section className="grid gap-5 sm:grid-cols-3">
