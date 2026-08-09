@@ -19,11 +19,10 @@ const MINI_H = 96;
 const MINI_PAD = 6;
 
 const CATEGORY_COLORS: Record<string, { fill: string; ring: string; label: string }> = {
-  src: { fill: "bg-blue-500/15", ring: "ring-blue-500/40", label: "External feed" },
-  proc: { fill: "bg-emerald-500/15", ring: "ring-emerald-500/40", label: "Pipeline stage" },
-  brain: { fill: "bg-violet-500/20", ring: "ring-violet-500/50", label: "Brain / regime" },
-  risk: { fill: "bg-orange-500/15", ring: "ring-orange-500/40", label: "Risk policy" },
-  exec: { fill: "bg-rose-500/15", ring: "ring-rose-500/40", label: "Executor" },
+  src: { fill: "bg-blue-500/15", ring: "ring-blue-500/40", label: "Input" },
+  proc: { fill: "bg-emerald-500/15", ring: "ring-emerald-500/40", label: "Rule / check" },
+  rule: { fill: "bg-lime-500/15", ring: "ring-lime-500/40", label: "Red-day rule" },
+  exec: { fill: "bg-rose-500/15", ring: "ring-rose-500/40", label: "Buy" },
   store: { fill: "bg-indigo-500/15", ring: "ring-indigo-500/40", label: "Storage" },
   sink: { fill: "bg-zinc-500/15", ring: "ring-zinc-500/40", label: "Sink" },
   sched: { fill: "bg-amber-500/15", ring: "ring-amber-500/40", label: "Schedule" },
@@ -31,44 +30,18 @@ const CATEGORY_COLORS: Record<string, { fill: string; ring: string; label: strin
 
 const CATEGORY_FOR_KEY: Record<string, keyof typeof CATEGORY_COLORS> = {
   sched: "sched",
-  reg: "brain",
-  wl: "proc",
-  feed: "proc",
-  enr: "proc",
-  snap: "proc",
-  trd: "brain",
-  risk: "risk",
-  exe: "exec",
-  journal: "proc",
+  funds: "src",
+  aMD: "src",
+  aTR: "src",
+  red: "rule",
+  sleeve: "proc",
+  dedupe: "proc",
+  buy: "exec",
+  hold: "proc",
   alp: "sink",
   db: "store",
   jsl: "store",
   web: "sink",
-  hc: "sink",
-  met: "store",
-  eodMD: "store",
-  crSun: "sched",
-  wrpy: "brain",
-  mdLatest: "store",
-  blogUI: "sink",
-  fbmd: "proc",
-  aMD: "src",
-  aTR: "src",
-  aOPT: "src",
-  yfin: "src",
-  rss: "src",
-  fred: "src",
-  vix: "src",
-  kal: "src",
-  poly: "src",
-  cnnfg: "src",
-  stw: "src",
-  cotF: "src",
-  edgar: "src",
-  fh: "src",
-  mktx: "src",
-  rdd: "src",
-  qv: "src",
 };
 
 const toolbarBtn =
@@ -327,11 +300,9 @@ export function FlowDiagram({ source }: { source: string }) {
         ) : (
           <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
             <p>
-              Click a box in the diagram to see curated notes. The dashed edge from{" "}
-              <strong className="text-zinc-800 dark:text-zinc-100">regime</strong> to{" "}
-              <strong className="text-zinc-800 dark:text-zinc-100">snapshot builder</strong>{" "}
-              highlights benchmark equity slices (e.g. broad index ETFs) used when assembling
-              cross-asset context.
+              Click a box in the diagram for a short note. Path is schedule → per-ticker red
+              check → sleeve underweight → market buy (or skip) → journal and paper broker. No
+              LLM in the loop.
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
               {Object.entries(CATEGORY_COLORS).map(([key, c]) => (
