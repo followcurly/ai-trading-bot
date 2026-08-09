@@ -6,29 +6,37 @@ const features = [
   {
     href: "/flow",
     badge: "Interactive",
-    title: "Pipeline flow",
-    body: "Pan, zoom, and click any node in a Mermaid diagram of the per-cycle pipeline: external feeds, regime, snapshot, brain, risk, executor, and sinks.",
+    title: "Simple flow",
+    body: "Two scans a day. Each fund is checked on its own day return. Red + underweight sleeve → buy. Green → skip. Hold. No model in the loop.",
     cta: "Open the diagram",
-    dotAccent: "bg-indigo-500",
+    dotAccent: "bg-emerald-500",
   },
   {
     href: "/architecture",
     badge: "Long-form",
-    title: "Architecture prose",
-    body: "Sanitized walkthrough: runtime topology, market snapshot, model decision flow, risk engine policies, executor guards, journal layout, weekly reporting.",
+    title: "Architecture",
+    body: "How the red-day buy-and-hold stack is wired: fund sleeves, Alpaca paper, journal, and what was deliberately left out after v1.",
     cta: "Read the doc",
-    dotAccent: "bg-emerald-500",
+    dotAccent: "bg-sky-500",
+  },
+  {
+    href: "/research",
+    badge: "Method",
+    title: "Lessons & method",
+    body: "Why the LLM pipeline failed, and how simple rules get backtested against real paper capital before anything expands.",
+    cta: "Read the method",
+    dotAccent: "bg-amber-500",
   },
 ];
 
 const insidePoints = [
-  "Cross-asset regime pre-brain (TTL-cached cross-asset verdict)",
-  "Watchlist construction: screener + anchors + bearish hedges + held positions",
-  "Snapshot builder with data-quality and sector context",
-  "Tier-1 / Tier-2 risk policies and intraday giveback halts",
-  "Executor: bracketed equity orders + single-leg options + liquidity gate",
-  "Journal: SQLite + JSONL with size-based rotation and WAL concurrency",
-  "Weekly Sonnet review → human blog + trader feedback bullets",
+  "Fixed ETF universe in three sleeves (core / dividend / growth)",
+  "Per-ticker red check (prior close → last) — no SPY-only gate",
+  "Buy only when that fund is red and its sleeve is underweight",
+  "Scans at 10:30 and 15:30 ET so late-day red can still matter",
+  "Same sleeve not bought twice in one session",
+  "Hold forever in software — no auto-sell, no trail ladder, no LLM",
+  "Journal + read-only dashboard for receipts; paper capital stays the scoreboard",
 ];
 
 export default function Home() {
@@ -39,23 +47,20 @@ export default function Home() {
 
         <main className="space-y-12 pb-16 sm:space-y-16 sm:pb-20">
           <section className="space-y-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700 dark:border-indigo-400/30 dark:bg-indigo-500/15 dark:text-indigo-200">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-500" />
-              Public · educational · sanitized
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-200">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Public · educational · v2 simplified
             </span>
             <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-zinc-900 sm:text-5xl md:text-6xl lg:text-7xl dark:text-zinc-50">
-              An AI trading bot,
+              Simple rules.
               <br />
-              <span className="italic text-zinc-800 dark:text-zinc-200">pipeline-first.</span>
+              <span className="italic text-zinc-800 dark:text-zinc-200">Real paper capital.</span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-zinc-700 dark:text-zinc-300">
-              Here&apos;s how the stack actually trades: a cross-asset regime call, a watchlist
-              built for that cycle, a fat per-symbol snapshot (bars, enrichers, data-quality
-              nagging), a small model pitching a JSON-shaped move, a risk engine that can veto or
-              soften it, an executor that talks to the broker, and a journal that remembers every
-              bruise in SQLite + JSONL. It&apos;s wired for paper first as a science project and a
-              spectator sport, and I&apos;m genuinely curious how much hypothetical money it can
-              set on fire over a long enough timeline if we keep the lights on.
+              The first version of this bot was a failure of overcomplexity — regime calls, model
+              debates, options ladders, weekly Sonnet postmortems. It did not trust time-tested
+              methods. v2 starts smaller: buy quality ETFs on red days, hold, and grow the system
+              only after simple scenarios prove themselves against the live paper book.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -63,7 +68,7 @@ export default function Home() {
                 href="/flow"
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-zinc-800 sm:flex-none dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                Explore the flow <span aria-hidden>→</span>
+                See the flow <span aria-hidden>→</span>
               </Link>
               <Link
                 href="/architecture"
@@ -79,7 +84,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="grid gap-5 sm:grid-cols-2">
+          <section className="grid gap-5 sm:grid-cols-3">
             {features.map((f) => (
               <Link
                 key={f.href}
@@ -93,7 +98,7 @@ export default function Home() {
                       {f.badge}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{f.title}</h2>
+                  <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{f.title}</h2>
                   <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
                     {f.body}
                   </p>
@@ -107,9 +112,9 @@ export default function Home() {
 
           <section className="rounded-2xl border border-zinc-200 bg-white/80 p-6 dark:border-zinc-800 dark:bg-zinc-900/60 sm:p-8">
             <div className="mb-5 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-violet-500" />
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-                What&apos;s inside
+                What&apos;s inside now
               </h3>
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -118,7 +123,7 @@ export default function Home() {
                   key={point}
                   className="flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-sm text-zinc-700 transition hover:border-zinc-200 hover:bg-white dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
                 >
-                  <span aria-hidden className="mt-1 text-violet-500">
+                  <span aria-hidden className="mt-1 text-emerald-500">
                     ◆
                   </span>
                   <span>{point}</span>
