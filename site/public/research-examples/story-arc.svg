@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" role="img" aria-labelledby="t">
+  <title id="t">Story arc from v1 to now to next</title>
+  <rect width="720" height="160" rx="12" fill="#18181b"/>
+  <g font-family="ui-sans-serif,system-ui,sans-serif">
+    <circle cx="72" cy="64" r="10" fill="#f87171"/>
+    <text x="72" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Tried</text>
+    <text x="72" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">LLM desk</text>
+    <line x1="90" y1="64" x2="170" y2="64" stroke="#52525b" stroke-width="2"/>
+    <circle cx="190" cy="64" r="10" fill="#fbbf24"/>
+    <text x="190" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Built</text>
+    <text x="190" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">options stack</text>
+    <line x1="208" y1="64" x2="288" y2="64" stroke="#52525b" stroke-width="2"/>
+    <circle cx="308" cy="64" r="10" fill="#fb923c"/>
+    <text x="308" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Ended</text>
+    <text x="308" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">-15.8% paper</text>
+    <line x1="326" y1="64" x2="406" y2="64" stroke="#52525b" stroke-width="2"/>
+    <circle cx="426" cy="64" r="10" fill="#34d399"/>
+    <text x="426" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Now</text>
+    <text x="426" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">red-day ETFs</text>
+    <line x1="444" y1="64" x2="524" y2="64" stroke="#52525b" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="544" cy="64" r="10" fill="none" stroke="#6ee7b7" stroke-width="2"/>
+    <text x="544" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Next</text>
+    <text x="544" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">evolve + LLM</text>
+    <line x1="562" y1="64" x2="642" y2="64" stroke="#52525b" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="662" cy="64" r="10" fill="none" stroke="#a1a1aa" stroke-width="2"/>
+    <text x="662" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#e4e4e7">Hope</text>
+    <text x="662" y="114" text-anchor="middle" font-size="10" fill="#a1a1aa">learn by doing</text>
+    <text x="360" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#e4e4e7">Where I am in the story</text>
+    <text x="360" y="148" text-anchor="middle" font-size="10" fill="#71717a">paper capital is the scoreboard</text>
+  </g>
+</svg>
