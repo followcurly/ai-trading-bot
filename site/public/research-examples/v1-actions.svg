@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300" role="img">
+<rect width="100%" height="100%" fill="#fafafa"/>
+<text x="100" y="22" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="#18181b">v1 journal actions</text>
+<text x="92" y="73.5" text-anchor="end" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">HOLD</text>
+<rect x="100" y="44.0" width="596.0" height="41.0" rx="4" fill="#6366f1"/>
+<text x="702.0" y="73.5" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">3623</text>
+<text x="92" y="130.5" text-anchor="end" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">HALT</text>
+<rect x="100" y="101.0" width="79.5" height="41.0" rx="4" fill="#6366f1"/>
+<text x="185.5" y="130.5" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">483</text>
+<text x="92" y="187.5" text-anchor="end" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">SELL</text>
+<rect x="100" y="158.0" width="47.2" height="41.0" rx="4" fill="#6366f1"/>
+<text x="153.2" y="187.5" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">287</text>
+<text x="92" y="244.5" text-anchor="end" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">BUY</text>
+<rect x="100" y="215.0" width="42.4" height="41.0" rx="4" fill="#6366f1"/>
+<text x="148.4" y="244.5" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">258</text>
+</svg>
