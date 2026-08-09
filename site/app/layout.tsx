@@ -29,15 +29,15 @@ const siteUrl = siteOrigin();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "AI Trading Bot — public architecture",
+    default: "AI Trading Bot — simple rules, paper capital",
     template: "%s · AI Trading Bot",
   },
   description:
-    "Educational, redacted architecture and interactive Mermaid flow for a research-style trading stack.",
+    "Educational site for a simplified red-day ETF buy-and-hold paper experiment. Not financial advice.",
   openGraph: {
-    title: "AI Trading Bot — public architecture & flow",
+    title: "AI Trading Bot — simple rules, paper capital",
     description:
-      "Sanitized diagrams and prose: feeds → pipeline → sinks. Not live trading; no secrets.",
+      "v2: buy quality ETFs on red days, hold, expand only after simple scenarios earn it. Not live trading.",
     type: "website",
     url: "/",
   },
