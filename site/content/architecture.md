@@ -102,4 +102,4 @@ Every HOLD/BUY writes a journal row (rationale, day return, sleeve, execute stat
 2. Backtest / paper-validate simple scenarios against the same capital the bot actually uses.
 3. Add the next knob only when the scoreboard (paper equity + journal) justifies it.
 
-**Later (not built):** an open-ended evolutionary layer — mutate simple rule variants, score them on paper fitness, promote only winners — in the spirit of search-based learning rather than another LLM desk. Shape of that search is intentionally undecided; see **Method** (`/research`).
+**Later (not built):** mutate rule variants, score on paper fitness, keep winners. Details on **Method**.
