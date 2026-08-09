@@ -1,21 +1,21 @@
-# AI trading bot — public architecture (v2)
+# Architecture (v2)
 
-Educational, sanitized overview of a **simplified** paper-trading stack. Not financial advice. Private host paths and secrets are omitted on purpose.
+How I wired the simplified paper stack. Educational only — not financial advice. Private paths and secrets stay off this page.
 
 ---
 
-## 0. What changed
+## 0. What I changed
 
-**v1 failed** by stacking complexity: cross-asset regime models, LLM trade proposals, multi-tier risk, options ladders, weekly Sonnet blogs. It optimized for cleverness instead of compounding boring edges.
+I failed v1 by stacking complexity: regime models, LLM trade proposals, multi-tier risk, options ladders, weekly Sonnet blogs. Cleverness beat compounding.
 
-**v2** starts from time-tested building blocks:
+I start v2 from boring blocks:
 
 - Quality broad-market and dividend ETFs
 - Buy weakness (that ticker red today), hold
-- Measure everything against **actual paper capital**
+- Measure everything against **my actual paper capital**
 - Expand only after simple scenarios earn the right
 
-No large-language model runs in the trading loop. No OpenRouter/Claude credits required to operate the bot.
+No LLM in the trading loop right now. I want to earn that back later — see [Method](/research).
 
 ---
 
