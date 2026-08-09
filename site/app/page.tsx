@@ -23,7 +23,7 @@ const features = [
     href: "/research",
     badge: "Method",
     title: "Lessons & method",
-    body: "Why the LLM pipeline failed, and how simple rules get backtested against real paper capital before anything expands.",
+    body: "v1 paper receipts, the red-day baseline, and an open-ended future: evolve / mutate / score strategies on paper fitness — MarI/O spirit, not another LLM desk.",
     cta: "Read the method",
     dotAccent: "bg-amber-500",
   },
@@ -60,7 +60,9 @@ export default function Home() {
               The first version of this bot was a failure of overcomplexity — regime calls, model
               debates, options ladders, weekly Sonnet postmortems. It did not trust time-tested
               methods. v2 starts smaller: buy quality ETFs on red days, hold, and grow the system
-              only after simple scenarios prove themselves against the live paper book.
+              only after simple scenarios prove themselves against the live paper book. Longer term:
+              leave room for evolutionary self-improvement — mutate rules, keep what the paper
+              scoreboard rewards — without pretending that layer exists yet.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
