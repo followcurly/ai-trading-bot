@@ -5,6 +5,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/flow", label: "Flow" },
   { href: "/architecture", label: "Architecture" },
+  { href: "/research", label: "Method" },
 ];
 
 function GitHubIcon({ className }: { className?: string }) {

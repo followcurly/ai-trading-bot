@@ -1,18 +1,14 @@
 <p align="center">
-  <img src="docs/readme/banner.png" alt="AI trading bot — paper-first, pipeline-first, build in public" width="100%" />
-</p>
-
-<p align="center">
   <a href="https://github.com/followcurly/ai-trading-bot"><img src="https://img.shields.io/github/stars/followcurly/ai-trading-bot?style=social" alt="GitHub stars" /></a>
   &nbsp;
   <a href="https://github.com/followcurly/ai-trading-bot/commits/main/"><img src="https://img.shields.io/github/last-commit/followcurly/ai-trading-bot?label=last%20commit" alt="Last commit" /></a>
 </p>
 
-# Build in public: one bot, one pipeline, lots of receipts
+# Build in public: simple rules, paper capital
 
-I am running a **homelab research stack** that ties together market data, a small model loop, a **Python risk engine**, and a broker in **paper** mode first. The point is not a polished product: it is a **transparent notebook** for how automated trading *actually* feels when you wire regime calls, fat snapshots, vetoes, brackets, and a journal that remembers every scratch.
+I am running a **homelab paper-trading experiment**. v1 tried to be clever (regime models, LLM brains, options ladders) and failed under its own weight. **v2** starts smaller: buy quality ETFs when *that* fund is red, hold, and only expand after simple scenarios earn it against the live paper book.
 
-If you are here to **follow along**, watch the commits, read the public site, and poke holes. If something looks dumb, open an issue. I want this repo to read like a build log, not a README that pretends you are going to clone my CT.
+If you are here to **follow along**, watch the commits, read the public site, and poke holes. Nothing here is financial advice.
 
 ---
 
@@ -20,31 +16,24 @@ If you are here to **follow along**, watch the commits, read the public site, an
 
 | | |
 | --- | --- |
-| **Live public site** | **[tradebot.followcurly.com](https://tradebot.followcurly.com)** — landing, interactive flow diagram, long-form architecture (all sanitized, educational only). |
-| **This repo** | The **Next.js** app under **`site/`** — that is what deploys. Source for the diagrams and prose; no API keys, no broker secrets, no private paths. |
-
-<p align="center">
-  <img src="docs/readme/pipeline-strip.png" alt="Pipeline: regime to journal" width="100%" />
-</p>
+| **Live public site** | **[tradebot.followcurly.com](https://tradebot.followcurly.com)** — landing, flow diagram, architecture, method |
+| **This repo** | Python trader under `trader/`, docs under `docs/`, Next.js public site under `site/` |
 
 **What you will see on the site**
 
-- **`/`** — why the stack exists and how the loop thinks in plain language.  
-- **`/flow`** — pan/zoom Mermaid pipeline you can click through (feeds → brain → risk → executor → sinks).  
-- **`/architecture`** — redacted deep dive: topology, snapshot shape, risk policies, journal, weekly review.
-
-That site is the friendly front door. The implementation lives elsewhere; this tree is the **documentation surface** I am comfortable shipping to the internet.
+- **`/`** — why v1 failed and what v2 is testing  
+- **`/flow`** — pan/zoom Mermaid: schedule → red check → sleeve weight → buy/hold → journal  
+- **`/architecture`** — redacted deep dive of the simplified stack  
+- **`/research`** — method: backtest simple scenarios against real paper capital before expanding  
 
 ---
 
 ## Why I am sharing it
 
-- **Paper first** — real order types and guardrails, hypothetical money.  
-- **Pipeline-first** — one cycle at a time: regime, watchlist, snapshot, model JSON, risk, execute, log.  
-- **Cloud models only** — no “magic local LLM”; inference is a line item I can reason about.  
-- **Weekly review** — Sonnet pass over the journal for a human-readable postmortem vibe.
-
-Nothing here is financial advice, a signal service, or an offer to trade your account.
+- **Paper first** — same Alpaca paper book is the scoreboard  
+- **Rules first** — no LLM in the trading loop  
+- **Earn complexity** — add tools only after simple cases prove useful  
+- **Receipts** — journal + private operator dashboard  
 
 ---
 
@@ -55,27 +44,8 @@ Nothing here is financial advice, a signal service, or an offer to trade your ac
 | **GitHub** | [github.com/followcurly/ai-trading-bot](https://github.com/followcurly/ai-trading-bot) |
 | **LinkedIn** | [linkedin.com/in/diazebas](https://www.linkedin.com/in/diazebas/) |
 
-Star or watch the repo if you want updates as the diagrams, copy, and public write-up evolve.
-
 ---
 
-## Homelab (context only)
+## Homelab operator notes (optional)
 
-I run the full loop on my own gear (**Proxmox** CT, **Tailscale**, **systemd** services, **Alpaca** paper, **Anthropic**/**OpenRouter** for inference). None of that wiring ships in this repository on purpose.
-
-<details>
-<summary><strong>Collapsed: stack at a glance</strong></summary>
-
-| Piece | Role |
-| --- | --- |
-| **Trading scheduler** | Loop: regime → watchlist → snapshot → model → risk → execute → journal |
-| **Read-only dashboard** | FastAPI log viewer on the LAN (not published here) |
-| **Inference** | Cloud APIs via env (no local Ollama on this stack) |
-
-</details>
-
----
-
-## Disclaimer
-
-Educational and research use. Not financial advice. Not a live trading product. Past (or simulated) performance is irrelevant; the interesting part is the engineering story.
+If you are **me** on a new machine: **[WORKSPACE_START_HERE.md](WORKSPACE_START_HERE.md)** and **[docs/TRADING_BOT.md](docs/TRADING_BOT.md)**. Everyone else can ignore that block.
