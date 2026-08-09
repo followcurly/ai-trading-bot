@@ -99,6 +99,25 @@ New tools (replay charts, scenario runners, promotion checklists) have to earn a
 
 ---
 
+## Future state (open-ended)
+
+The long game is not “another LLM desk.” It’s closer to the spirit of [MarI/O](https://www.youtube.com/watch?v=qv6UVOQ0F44) — **evolutionary search**: many simple rule variants, mutate the knobs, score them on a hard fitness function, keep what survives, repeat.
+
+![evolutionary loop sketch](/research-examples/v-future-evolve.svg)
+
+What that might mean here, without locking the design:
+
+- A **population** of strategy genomes (entries, sizing, sleeve targets, maybe exits later)  
+- **Mutation / crossover** that tweaks those genes instead of hand-rewriting the whole stack  
+- **Fitness** measured against the same paper book story — equity, drawdown, boredom of turnover — not vibes  
+- A promotion gate so only winners ever touch the live paper schedule  
+
+What’s deliberately still undecided: which algorithm (NEAT-style nets, genetic programming over rules, bandits, something quieter), how big the search space gets, and how much human veto stays in the loop. v2’s red-day buy-and-hold is the **seed organism** — a boring baseline a mutator has to beat, not a finished product.
+
+Until that loop exists in code, this page will keep saying so. Ambition is allowed; pretending it’s already shipping is not.
+
+---
+
 ## What this page is not
 
-Not a signal service. Not live advice. Not a claim that “buy red ETFs” prints money. It is a public lab notebook: v1 left receipts (−15.8% paper, options-heavy), and v2 is choosing a narrower path on purpose.
+Not a signal service. Not live advice. Not a claim that “buy red ETFs” prints money. It is a public lab notebook: v1 left receipts (−15.8% paper, options-heavy), v2 is choosing a narrower path on purpose, and a self-improving evolutionary layer is a **direction**, not a promise of alpha.
