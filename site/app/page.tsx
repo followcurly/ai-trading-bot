@@ -6,37 +6,35 @@ const features = [
   {
     href: "/flow",
     badge: "Interactive",
-    title: "Simple flow",
-    body: "Two scans a day. Each fund is checked on its own day return. Red + underweight sleeve → buy. Green → skip. Hold. No model in the loop.",
-    cta: "Open the diagram",
+    title: "Flow",
+    body: "Two scans/day. Red + underweight sleeve → buy. Green → skip. Hold.",
+    cta: "Diagram",
     dotAccent: "bg-emerald-500",
   },
   {
     href: "/architecture",
-    badge: "Long-form",
+    badge: "Docs",
     title: "Architecture",
-    body: "How the red-day buy-and-hold stack is wired: fund sleeves, Alpaca paper, journal, and what was deliberately left out after v1.",
-    cta: "Read the doc",
+    body: "ETF sleeves, Alpaca paper, journal — and what v1 left behind.",
+    cta: "Read",
     dotAccent: "bg-sky-500",
   },
   {
     href: "/research",
     badge: "Method",
-    title: "Lessons & method",
-    body: "v1 paper receipts, the red-day baseline, and an open-ended future: evolve / mutate / score strategies on paper fitness — MarI/O spirit, not another LLM desk.",
-    cta: "Read the method",
+    title: "Receipts",
+    body: "v1 −15.8% paper, v2 baseline, evolutionary north star.",
+    cta: "Method",
     dotAccent: "bg-amber-500",
   },
 ];
 
 const insidePoints = [
-  "Fixed ETF universe in three sleeves (core / dividend / growth)",
-  "Per-ticker red check (prior close → last) — no SPY-only gate",
-  "Buy only when that fund is red and its sleeve is underweight",
-  "Scans at 10:30 and 15:30 ET so late-day red can still matter",
-  "Same sleeve not bought twice in one session",
-  "Hold forever in software — no auto-sell, no trail ladder, no LLM",
-  "Journal + read-only dashboard for receipts; paper capital stays the scoreboard",
+  "Three sleeves: core / dividend / growth",
+  "Per-ticker red day → candidate buy",
+  "10:30 & 15:30 ET scans",
+  "No auto-sell, no LLM in the loop",
+  "Paper equity is the scoreboard",
 ];
 
 export default function Home() {
@@ -46,23 +44,19 @@ export default function Home() {
         <SiteNav />
 
         <main className="space-y-12 pb-16 sm:space-y-16 sm:pb-20">
-          <section className="space-y-8">
+          <section className="space-y-6">
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-200">
               <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Public · educational · v2 simplified
+              Public · educational · v2
             </span>
-            <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-zinc-900 sm:text-5xl md:text-6xl lg:text-7xl dark:text-zinc-50">
+            <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-zinc-900 sm:text-5xl md:text-6xl dark:text-zinc-50">
               Simple rules.
               <br />
               <span className="italic text-zinc-800 dark:text-zinc-200">Real paper capital.</span>
             </h1>
-            <p className="max-w-2xl text-lg leading-relaxed text-zinc-700 dark:text-zinc-300">
-              The first version of this bot was a failure of overcomplexity — regime calls, model
-              debates, options ladders, weekly Sonnet postmortems. It did not trust time-tested
-              methods. v2 starts smaller: buy quality ETFs on red days, hold, and grow the system
-              only after simple scenarios prove themselves against the live paper book. Longer term:
-              leave room for evolutionary self-improvement — mutate rules, keep what the paper
-              scoreboard rewards — without pretending that layer exists yet.
+            <p className="max-w-xl text-lg leading-relaxed text-zinc-700 dark:text-zinc-300">
+              v1 overbuilt an LLM options desk and lost −15.8% paper. v2 buys quality ETFs on red
+              days and holds. Next ambition: evolve rules that beat that baseline — not built yet.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -70,35 +64,57 @@ export default function Home() {
                 href="/flow"
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-zinc-800 sm:flex-none dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                See the flow <span aria-hidden>→</span>
+                Flow <span aria-hidden>→</span>
               </Link>
               <Link
-                href="/architecture"
+                href="/research"
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 sm:flex-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
               >
-                Read the architecture
+                Method
               </Link>
             </div>
 
-            <div className="rounded-xl border border-amber-300/40 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-100">
-              <strong>Disclaimer:</strong> educational documentation only. This is not financial
-              advice, not a live trading interface, and not an offer to provide trading services.
-            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Educational only — not financial advice.
+            </p>
+          </section>
 
+          <section className="grid gap-4 sm:grid-cols-2">
             <Link
               href="/research"
               className="block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700"
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-                v1 paper receipts
+                v1 paper
               </p>
               <p className="mt-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                $100k → $84.2k (−15.8%) in ~3 months
+                $100k → $84.2k (−15.8%)
               </p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                4,651 cycles · 439 orders · options-heavy · full charts and postmortem on the Method
-                page →
+                ~3 months · options-heavy · charts on Method →
               </p>
+            </Link>
+
+            <Link
+              href="/research"
+              className="block rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 shadow-sm transition hover:border-emerald-500/40 hover:shadow-md dark:bg-emerald-500/10"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-200">
+                Future · open
+              </p>
+              <p className="mt-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                Mutate → score → keep
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                MarI/O-style search on paper fitness. Shape undecided.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/research-examples/v-future-evolve.svg"
+                alt="Evolutionary loop sketch"
+                className="mt-4 h-auto w-full rounded-lg border border-zinc-200/80 dark:border-zinc-700"
+                loading="lazy"
+              />
             </Link>
           </section>
 
@@ -132,14 +148,14 @@ export default function Home() {
             <div className="mb-5 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
-                What&apos;s inside now
+                Inside now
               </h3>
             </div>
             <ul className="grid gap-3 sm:grid-cols-2">
               {insidePoints.map((point) => (
                 <li
                   key={point}
-                  className="flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-sm text-zinc-700 transition hover:border-zinc-200 hover:bg-white dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                  className="flex items-start gap-3 rounded-lg px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300"
                 >
                   <span aria-hidden className="mt-1 text-emerald-500">
                     ◆
