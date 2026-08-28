@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Alpaca paper — open positions{% endblock %}
+{% block body %}
+<h1>Open positions (live)</h1>
+<p><a href="/?token={{ query_token | urlencode }}">← Cycles</a></p>
+
+{% if positions_error %}
+<p class="muted" style="color:var(--chip-sell);">Could not load positions: <code>{{ positions_error }}</code></p>
+{% elif not positions %}
+<p class="muted">No open positions.</p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th>
+      <th class="num">Qty</th>
+      <th class="num">Avg entry</th>
+      <th class="num">Market value</th>
+      <th class="num">Unrealized P&amp;L</th>
+      <th class="num">P&amp;L %</th>
+      <th class="num" title="Highest unrealized P&amp;L observed (multi-day)">Peak P&amp;L</th>
+      <th class="num" title="Trail-giveback exit fires when unrealized P&amp;L drops below this">Trail floor</th>
+      <th class="num" title="Days until option expiry — T-0 sweep auto-closes after the cutoff">DTE</th>
+      <th title="Profit-ladder rungs already harvested + expiry-sweep flag">Exit state</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in positions %}
+    <tr>
+      <td><strong>{{ p.symbol }}</strong></td>
+      <td class="num">{{ "%.4f"|format(p.qty|float) }}</td>
+      <td class="num">{{ "%.2f"|format(p.avg_entry|float) }}</td>
+      <td class="num">{{ "%.2f"|format(p.market_value|float) }}</td>
+      <td class="num">{{ "%.2f"|format(p.unrealized_pl|float) }}</td>
+      <td class="num">{{ "%.2f"|format((p.unrealized_plpc|float) * 100) }}%</td>
+      <td class="num">
+        {% if p.peak_unrealized_pnl is not none %}{{ "%.2f"|format(p.peak_unrealized_pnl|float) }}{% else %}—{% endif %}
+      </td>
+      <td class="num">
+        {% if p.trail_floor is not none %}{{ "%.2f"|format(p.trail_floor|float) }}{% else %}—{% endif %}
+      </td>
+      <td class="num">
+        {% if p.days_to_expiry is not none %}
+          {% if p.days_to_expiry == 0 %}<strong style="color:var(--chip-sell);">0 (today)</strong>
+          {% elif p.days_to_expiry == 1 %}<strong>1d</strong>
+          {% elif p.days_to_expiry < 0 %}exp
+          {% else %}{{ p.days_to_expiry }}d
+          {% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if p.ladder_rungs_fired %}
+          <span class="chip chip-sell" title="Profit-ladder rungs already harvested">
+            ladder: {{ p.ladder_rungs_fired|join(",") }}
+          </span>
+        {% endif %}
+        {% if p.expiry_swept %}
+          <span class="chip chip-halt">expiry-swept</span>
+        {% endif %}
+        {% if not p.ladder_rungs_fired and not p.expiry_swept %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if account_strip %}
+<p class="muted" style="margin-top:1rem;">
+  Account equity: <strong>{{ "%.2f"|format(account_strip.equity|float) }}</strong>
+  · Day trades (5d rolling): <strong>{{ account_strip.daytrade_count }}</strong>
+  {% if account_strip.pattern_day_trader %}<span class="chip chip-halt">PDT</span>{% endif %}
+</p>
+{% endif %}
+
+<p class="muted"><a href="{{ request.url }}">Refresh</a> — data from Alpaca paper API (not the journal).</p>
+{% endblock %}

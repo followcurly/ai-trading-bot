@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .post-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+    margin-bottom: 1.75rem;
+  }
+  .post-header .back-link {
+    font-size: 0.88rem;
+    color: var(--muted);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.85rem;
+  }
+  .post-header .back-link:hover { color: var(--accent); }
+  .post-header h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.85rem;
+    line-height: 1.25;
+  }
+  .post-header .post-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .post-body {
+    max-width: 740px;
+    line-height: 1.7;
+    font-size: 1rem;
+  }
+  .post-body h2 {
+    margin: 2rem 0 0.6rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.3rem;
+  }
+  .post-body h3 { margin: 1.4rem 0 0.4rem; font-size: 1.05rem; }
+  .post-body p  { margin: 0 0 1rem; }
+  .post-body ul, .post-body ol {
+    padding-left: 1.5rem;
+    margin: 0 0 1rem;
+  }
+  .post-body li { margin-bottom: 0.35rem; }
+  .post-body blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem 0.5rem 1rem;
+    background: var(--row-alt);
+    border-radius: 0 6px 6px 0;
+    color: var(--muted);
+  }
+  .post-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.75rem 0;
+  }
+  .post-body strong { font-weight: 700; }
+  .post-body em { font-style: italic; }
+  .post-body code {
+    background: var(--row-alt);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.87em;
+  }
+  .post-body pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  /* Charts */
+  .charts-section {
+    max-width: 740px;
+    margin: 2rem 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .chart-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1rem 0.75rem;
+    background: var(--row-alt);
+    overflow: hidden;
+  }
+  .chart-card.chart-wide {
+    grid-column: 1 / -1;
+  }
+  .post-nav {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .post-nav a { font-size: 0.9rem; }
+  .disclaimer {
+    margin-top: 2rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: var(--row-alt);
+  }
+  @media (max-width: 560px) {
+    .charts-section { grid-template-columns: 1fr; }
+    .chart-card.chart-wide { grid-column: 1; }
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="post-header">
+  <a class="back-link" href="/blog?token={{ query_token | urlencode }}">← All posts</a>
+  <h1>{{ post.title }}</h1>
+  <span class="post-meta">
+    {{ post.date or "—" }} · {{ post.subtitle or blog.default_subtitle }}
+  </span>
+</div>
+
+<div class="post-body">
+  {{ post.html_body | safe }}
+</div>
+
+{% if charts and post.charts %}
+<div class="charts-section">
+  {% if charts.equity_curve %}
+  <div class="chart-card chart-wide">
+    {{ charts.equity_curve | safe }}
+  </div>
+  {% endif %}
+  {% if charts.decisions %}
+  <div class="chart-card">
+    {{ charts.decisions | safe }}
+  </div>
+  {% endif %}
+  {% if charts.top_symbols %}
+  <div class="chart-card">
+    {{ charts.top_symbols | safe }}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="disclaimer">
+  {{ blog.disclaimer }}
+</div>
+
+<div class="post-nav">
+  <a href="/blog?token={{ query_token | urlencode }}">← All posts</a>
+  {% if prev_slug %}
+  <a href="/blog/{{ prev_slug }}?token={{ query_token | urlencode }}">← Older</a>
+  {% endif %}
+  {% if next_slug %}
+  <a href="/blog/{{ next_slug }}?token={{ query_token | urlencode }}">Newer →</a>
+  {% endif %}
+</div>
+{% endblock %}

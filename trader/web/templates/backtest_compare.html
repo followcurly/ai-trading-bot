@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}Compare — Trade logic{% endblock %}
+{% block extra_head %}
+<script src="/static/chart.umd.min.js"></script>
+<style>
+  .bt-page { max-width: 1100px; }
+  .bt-head {
+    margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border);
+  }
+  .bt-head h1 { margin: 0 0 0.35rem; font-size: 1.45rem; letter-spacing: -0.02em; }
+  .bt-meta { color: var(--muted); font-size: 0.9rem; }
+  .bt-safe {
+    display: inline-block; margin-top: 0.5rem; font-size: 0.75rem; font-weight: 700;
+    padding: 0.2rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
+  }
+  .bt-pos { color: var(--chip-buy); }
+  .bt-neg { color: var(--chip-sell); }
+  .bt-chart-wrap {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.75rem 0.85rem; margin: 1rem 0; background: var(--bg);
+  }
+  .bt-chart-head {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.5rem; margin-bottom: 0.35rem;
+  }
+  .bt-chart-head h2 { margin: 0; font-size: 1rem; }
+  .bt-chart-toggle {
+    display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  .bt-chart-toggle button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; cursor: pointer;
+  }
+  .bt-chart-toggle button.is-on {
+    background: var(--accent, #2563eb); color: #fff;
+  }
+  .bt-chart-box { position: relative; height: 380px; }
+  table { font-size: 0.9rem; }
+  table.bt-sortable th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+  table.bt-sortable th[data-sort]:hover { color: var(--accent); }
+  table.bt-sortable th.sort-asc::after { content: " ▲"; font-size: 0.7em; }
+  table.bt-sortable th.sort-desc::after { content: " ▼"; font-size: 0.7em; }
+  .winner { font-weight: 700; }
+  #cmp-status { color: var(--muted); font-size: 0.9rem; margin: 0.35rem 0 0.5rem; }
+  .bt-end-tags {
+    display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0 0;
+  }
+  .bt-end-tags span {
+    font-size: 0.78rem; font-weight: 650; padding: 0.2rem 0.5rem;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--fg);
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="bt-page">
+  <div class="bt-head">
+    <h1>{{ title or "Compare" }}</h1>
+    <div class="bt-meta">
+      {% if meta %}
+      {{ meta.start_date }} → {{ meta.end_date }}
+      · cash ${{ '%.0f'|format(meta.cash) }}
+      · {{ meta.cost_bps }} bps
+      {% if meta.universe %}· mix {{ meta.universe }}{% endif %}
+      {% if meta.mode %}· plan {{ meta.mode }}{% endif %}
+      {% endif %}
+    </div>
+    <span class="bt-safe">does not touch paper</span>
+  </div>
+
+  {% if not rows %}
+  <p class="muted">No compare runs found. Go back and check 2+ boxes under one compare row.</p>
+  {% else %}
+
+  <section class="bt-chart-wrap">
+    <div class="bt-chart-head">
+      <h2>Strategy overlay ({{ rows|length }} plans + SPY)</h2>
+      <div class="bt-chart-toggle" role="group" aria-label="Chart scale">
+        <button type="button" id="cmp-mode-pct" class="is-on">Return %</button>
+        <button type="button" id="cmp-mode-usd">Equity $</button>
+      </div>
+    </div>
+    <p id="cmp-status">Building chart…</p>
+    <div class="bt-chart-box"><canvas id="cmpChart"></canvas></div>
+    <div class="bt-end-tags" id="cmp-end-tags"></div>
+    <p class="bt-meta" style="margin:0.65rem 0 0">
+      Tip: Return % starts every line at 0 so differences are easy to see.
+      Clicking a Run id below opens that plan alone (not the overlay).
+    </p>
+  </section>
+
+  <p class="bt-meta" style="margin:1rem 0 0.5rem">Click column headers to sort.</p>
+  <table id="cmp-table" class="bt-sortable">
+    <thead>
+      <tr>
+        <th data-sort="text">Plan</th>
+        <th data-sort="text">ETF mix</th>
+        <th class="num" data-sort="num">Return</th>
+        <th class="num" data-sort="num">vs SPY</th>
+        <th class="num" data-sort="num">Max DD</th>
+        <th class="num" data-sort="num">Div $</th>
+        <th class="num" data-sort="num">Trades</th>
+        <th data-sort="text">Run</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="{% if row.best_return %}winner{% endif %}">
+        <td data-v="{{ row.label }}">{{ row.label }}{% if row.best_return %} · best{% endif %}</td>
+        <td data-v="{{ row.universe }}">{{ row.universe }}</td>
+        <td class="num {% if (row.total_return or 0) >= 0 %}bt-pos{% else %}bt-neg{% endif %}"
+            data-v="{{ row.total_return if row.total_return is not none else '' }}">
+          {{ '%.1f'|format((row.total_return or 0) * 100) }}%
+        </td>
+        <td class="num {% if (row.vs_spy or 0) >= 0 %}bt-pos{% else %}bt-neg{% endif %}"
+            data-v="{{ row.vs_spy if row.vs_spy is not none else '' }}">
+          {{ '%+.1f'|format((row.vs_spy or 0) * 100) }}%
+        </td>
+        <td class="num" data-v="{{ row.max_drawdown if row.max_drawdown is not none else '' }}">
+          {{ '%.1f'|format((row.max_drawdown or 0) * 100) }}%
+        </td>
+        <td class="num" data-v="{{ row.dividend_cash if row.dividend_cash is not none else '' }}">
+          {% if row.dividend_cash is not none %}${{ '%.0f'|format(row.dividend_cash) }}{% else %}—{% endif %}
+        </td>
+        <td class="num" data-v="{{ row.trade_count }}">{{ row.trade_count }}</td>
+        <td data-v="{{ row.id }}"><a href="/backtest/{{ row.id }}?token={{ query_token | urlencode }}">{{ row.id }}</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <p style="margin-top:1.25rem"><a href="/backtest?token={{ query_token | urlencode }}">← Backtest lab</a></p>
+  <script>
+  (function () {
+    const table = document.getElementById("cmp-table");
+    if (!table) return;
+    const ths = table.querySelectorAll("thead th[data-sort]");
+    let sortCol = -1, asc = true;
+    ths.forEach((th, idx) => {
+      th.addEventListener("click", function () {
+        const type = th.getAttribute("data-sort") || "text";
+        if (sortCol === idx) asc = !asc;
+        else { sortCol = idx; asc = type === "num" ? false : true; }
+        ths.forEach(h => h.classList.remove("sort-asc", "sort-desc"));
+        th.classList.add(asc ? "sort-asc" : "sort-desc");
+        const tbody = table.tBodies[0];
+        const rows = Array.from(tbody.rows);
+        rows.sort((a, b) => {
+          const av = a.cells[idx].getAttribute("data-v");
+          const bv = b.cells[idx].getAttribute("data-v");
+          let cmp = 0;
+          if (type === "num") {
+            const an = av === "" || av == null ? -Infinity : Number(av);
+            const bn = bv === "" || bv == null ? -Infinity : Number(bv);
+            cmp = an === bn ? 0 : (an < bn ? -1 : 1);
+          } else {
+            cmp = String(av || "").localeCompare(String(bv || ""), undefined, { sensitivity: "base" });
+          }
+          return asc ? cmp : -cmp;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+      });
+    });
+  })();
+  </script>
+
+  <script id="cmp-data" type="application/json">{{ payload | tojson }}</script>
+  <script>
+  (function () {
+    const status = document.getElementById("cmp-status");
+    const canvas = document.getElementById("cmpChart");
+    const tags = document.getElementById("cmp-end-tags");
+    const btnPct = document.getElementById("cmp-mode-pct");
+    const btnUsd = document.getElementById("cmp-mode-usd");
+    if (!canvas) return;
+    let data = {};
+    try {
+      data = JSON.parse(document.getElementById("cmp-data").textContent || "{}");
+    } catch (e) {
+      if (status) status.textContent = "Could not parse chart data.";
+      return;
+    }
+    const series = data.series || [];
+    if (!series.length) {
+      if (status) status.textContent = "No equity series to plot.";
+      return;
+    }
+    if (typeof Chart === "undefined") {
+      if (status) status.textContent = "Chart.js failed to load.";
+      return;
+    }
+
+    const labelSet = new Set();
+    series.forEach(s => (s.labels || []).forEach(l => labelSet.add(String(l).slice(0, 10))));
+    const labels = Array.from(labelSet).sort();
+    // High-contrast on dark UI
+    const colors = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#c084fc", "#a1a1aa"];
+    const tick = "#a1a1aa";
+    const grid = "rgba(255,255,255,0.08)";
+    const fg = "#e4e4e7";
+
+    function aligned(mode) {
+      return series.map((s, i) => {
+        const map = {};
+        (s.labels || []).forEach((l, idx) => { map[String(l).slice(0, 10)] = Number(s.values[idx]); });
+        let base = null;
+        for (const l of labels) {
+          if (map[l] != null && Number.isFinite(map[l]) && map[l] !== 0) { base = map[l]; break; }
+        }
+        const pts = labels.map(l => {
+          const v = map[l];
+          if (v == null || !Number.isFinite(v)) return null;
+          if (mode === "pct") {
+            if (base == null || base === 0) return null;
+            return ((v / base) - 1) * 100;
+          }
+          return v;
+        });
+        const last = [...pts].reverse().find(v => v != null);
+        return {
+          label: s.label,
+          data: pts,
+          borderColor: colors[i % colors.length],
+          backgroundColor: "transparent",
+          borderWidth: s.label === "SPY B&H" ? 1.75 : 2.75,
+          borderDash: s.label === "SPY B&H" ? [5, 4] : [],
+          tension: 0.05,
+          pointRadius: 0,
+          spanGaps: true,
+          fill: false,
+          _last: last,
+          _color: colors[i % colors.length]
+        };
+      });
+    }
+
+    let mode = "pct";
+    let chart = null;
+
+    function render() {
+      const datasets = aligned(mode);
+      if (chart) chart.destroy();
+      chart = new Chart(canvas, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          color: fg,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { boxWidth: 14, boxHeight: 3, color: fg, font: { weight: "600" } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  if (v == null) return ctx.dataset.label + ": —";
+                  if (mode === "pct") return ctx.dataset.label + ": " + v.toFixed(1) + "%";
+                  return ctx.dataset.label + ": $" + Math.round(v).toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 10, maxRotation: 0, color: tick },
+              grid: { display: false }
+            },
+            y: {
+              ticks: {
+                color: tick,
+                callback: v => mode === "pct" ? (Number(v).toFixed(0) + "%") : ("$" + Number(v).toLocaleString())
+              },
+              grid: { color: grid }
+            }
+          }
+        }
+      });
+      if (status) {
+        status.textContent = labels.length + " days · " + datasets.length + " series · "
+          + (mode === "pct" ? "indexed return %" : "equity $");
+      }
+      if (tags) {
+        tags.innerHTML = datasets.map(d => {
+          if (d._last == null) return "";
+          const txt = mode === "pct"
+            ? (d._last >= 0 ? "+" : "") + d._last.toFixed(1) + "%"
+            : "$" + Math.round(d._last).toLocaleString();
+          return '<span style="border-color:' + d._color + ';color:' + d._color + '">'
+            + d.label + " " + txt + "</span>";
+        }).join("");
+      }
+    }
+
+    function setMode(next) {
+      mode = next;
+      if (btnPct) btnPct.classList.toggle("is-on", mode === "pct");
+      if (btnUsd) btnUsd.classList.toggle("is-on", mode === "usd");
+      try { render(); }
+      catch (err) {
+        if (status) status.textContent = "Chart error: " + (err && err.message ? err.message : String(err));
+      }
+    }
+    if (btnPct) btnPct.addEventListener("click", () => setMode("pct"));
+    if (btnUsd) btnUsd.addEventListener("click", () => setMode("usd"));
+    setMode("pct");
+  })();
+  </script>
+</div>
+{% endblock %}

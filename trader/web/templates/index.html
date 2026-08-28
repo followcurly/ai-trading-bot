@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block body %}
+{% if cycle_stale_rth %}
+<div role="alert" style="background:var(--chip-sell-bg);color:var(--chip-sell);border:1px solid var(--chip-sell);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-weight:600;">
+  Stale journal: no new cycle rows in the last 90 minutes while the US cash session is open. Check <code>trading-bot</code> / Healthchecks.
+</div>
+{% endif %}
+<h1>Recent cycles</h1>
+<p class="muted">Profile: <code>{{ trading_profile }}</code> · <a href="/research?token={{ query_token | urlencode }}&profile={{ trading_profile | urlencode }}">research charts</a></p>
+<div class="strip">
+  {% if last_cycle_time %}
+  <span>Last cycle: <strong title="{{ last_cycle_time }}">{{ last_cycle_time | human_timestamp }}</strong></span>
+  {% else %}
+  <span class="muted">No rows in journal yet.</span>
+  {% endif %}
+  {% if live_account %}
+  <span class="muted">Alpaca paper — equity <strong>{{ "%.2f"|format(live_account.equity|float) }}</strong>
+    · day trades (5d): <strong>{{ live_account.daytrade_count }}</strong>
+    {% if live_account.pattern_day_trader %}<span class="chip chip-halt">PDT</span>{% endif %}
+    · <a href="/positions?token={{ query_token | urlencode }}">open positions</a>
+  </span>
+  {% endif %}
+  <form method="get" action="/" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+    {% if query_token %}
+    <input type="hidden" name="token" value="{{ query_token }}"/>
+    {% endif %}
+    <label>Symbol
+      <select name="symbol" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for s in symbols %}
+        <option value="{{ s }}" {% if s == symbol_filter %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="muted">Limit
+      <input type="number" name="limit" min="1" max="500" value="{{ limit }}" style="width:5rem"/>
+    </label>
+    <button type="submit">Apply</button>
+    <a href="{{ request.url }}">Refresh</a>
+  </form>
+</div>
+
+{# Summary counts for current page #}
+{% set placed_count = rows | selectattr("execute_status", "equalto", "placed") | list | length %}
+{% set error_count  = rows | selectattr("execute_status", "equalto", "error")  | list | length %}
+{% if placed_count or error_count %}
+<div class="strip" style="margin-bottom:0.75rem; font-size:0.9rem;">
+  {% if placed_count %}<span><span class="chip chip-placed">{{ placed_count }} placed</span></span>{% endif %}
+  {% if error_count  %}<span><span class="chip chip-error">{{ error_count }} error</span> — click a row to see the reason</span>{% endif %}
+</div>
+{% endif %}
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Time</th>
+      <th>Symbol</th>
+      <th>Decision</th>
+      <th>Execute</th>
+      <th>Strategy</th>
+      <th class="num">Conf</th>
+      <th>Rationale</th>
+      <th class="num">Equity</th>
+      <th class="num">Daily P&amp;L</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    {% set act = (r.action or "")|upper %}
+    {% set estat = r.get("execute_status") if r.get is defined else r["execute_status"] if "execute_status" in r else None %}
+    <tr class="click-row{% if estat == 'error' %} row-error{% endif %}" onclick="location.href='/cycle/{{ r.id }}?token={{ query_token | urlencode }}';">
+      <td>{{ r.id }}</td>
+      <td title="{{ r.timestamp }}">{{ r.timestamp | human_timestamp }}</td>
+      <td>{{ r.symbol }}</td>
+      <td><span class="chip {% if act == 'BUY' %}chip-buy{% elif act == 'SELL' %}chip-sell{% elif act == 'HALT' %}chip-halt{% else %}chip-hold{% endif %}">{{ r.action or "—" }}</span></td>
+      <td>
+        {% if estat %}
+        <span class="chip chip-{{ estat }}">{{ estat }}</span>
+        {% set _err = r.execute_error %}
+        {% if _err and estat in ("skipped", "error") %}
+        <div class="muted" title="{{ _err }}" style="font-size:0.75rem;margin-top:0.2rem;word-break:break-word;">
+          {{ _err[:80] }}{% if _err|length > 80 %}…{% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>{{ r.strategy or "—" }}</td>
+      <td class="num">{% if r.confidence is not none %}{{ "%.2f"|format(r.confidence|float) }}{% else %}—{% endif %}</td>
+      {% set _disp = r.display_rationale or (r.rationale or "—") %}
+      <td title="{{ r.rationale or '' }}">{{ _disp[:160] }}{% if _disp|length > 160 %}…{% endif %}</td>
+      <td class="num">{% if r.equity is not none %}{{ "%.2f"|format(r.equity|float) }}{% else %}—{% endif %}</td>
+      <td class="num">{% if r.daily_pnl is not none %}{{ "%.2f"|format(r.daily_pnl|float) }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if not rows %}
+<p class="muted">No matching rows.</p>
+{% endif %}
+<p class="muted">Click a row for full pipeline. <strong>Execute chip:</strong> <span class="chip chip-placed">placed</span> = order accepted by Alpaca · <span class="chip chip-error">error</span> = Alpaca rejected · <span class="chip chip-skipped">skipped</span> = executor vetoed · <span class="chip chip-not_attempted">not_attempted</span> = HOLD/HALT. Cycle detail pages show <strong>market regime</strong> (direction + conviction) when the journal snapshot excerpt includes it.</p>
+{% endblock %}

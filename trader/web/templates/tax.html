@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Tax calculator — {{ page_title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .tax-wrap { max-width: 980px; margin: 0 auto; }
+  .tax-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .tax-grid { grid-template-columns: 1fr; }
+  }
+  .tax-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem 1.15rem;
+    background: var(--row-alt);
+  }
+  .tax-card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+  .tax-form label {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0.65rem 0 0.2rem;
+  }
+  .tax-form input, .tax-form select {
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+  }
+  .tax-form .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .tax-actions { margin-top: 1rem; display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .tax-actions button, .tax-actions a.btn {
+    appearance: none;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0.45rem 0.85rem;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .tax-actions a.btn.secondary, .tax-actions button.secondary {
+    background: transparent;
+    color: var(--accent);
+  }
+  .tax-kpi {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+  .tax-kpi .box {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.65rem;
+    background: var(--bg);
+  }
+  .tax-kpi .lbl { font-size: 0.75rem; color: var(--muted); }
+  .tax-kpi .val { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
+  .tax-notes { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+  .tax-notes li { margin: 0.25rem 0; }
+  .tax-table { width: 100%; font-size: 0.88rem; margin-top: 0.5rem; }
+  .tax-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tax-disclaimer {
+    margin-top: 1rem;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--chip-halt);
+    background: var(--chip-halt-bg);
+    color: var(--chip-halt);
+    font-size: 0.85rem;
+  }
+  .muted { color: var(--muted); }
+</style>
+{% endblock %}
+{% block body %}
+<div class="tax-wrap">
+  <h1 style="margin:0.25rem 0 0.35rem">Tax calculator</h1>
+  <p class="muted" style="margin-top:0">
+    US federal estimate for <strong>individuals</strong> and <strong>complex trusts</strong>
+    (tax year {{ result.tax_year if result else 2025 }}). Planning only — not tax advice.
+  </p>
+
+  <div class="tax-grid">
+    <section class="tax-card">
+      <h2>Inputs</h2>
+      <form class="tax-form" method="post" action="/tax?token={{ query_token | urlencode }}">
+        <label for="entity">Filing type</label>
+        <select id="entity" name="entity">
+          <option value="individual_single" {% if form.entity == 'individual_single' %}selected{% endif %}>Individual — Single</option>
+          <option value="individual_mfj" {% if form.entity == 'individual_mfj' %}selected{% endif %}>Individual — Married Filing Jointly</option>
+          <option value="trust" {% if form.entity == 'trust' %}selected{% endif %}>Complex Trust / Estate</option>
+        </select>
+
+        <div class="row2">
+          <div>
+            <label for="ordinary_income">Ordinary income ($)</label>
+            <input id="ordinary_income" name="ordinary_income" type="number" step="0.01" min="0" value="{{ '%.2f'|format(form.ordinary_income) }}"/>
+          </div>
+          <div>
+            <label for="short_term_gains">Short-term capital gains ($)</label>
+            <input id="short_term_gains" name="short_term_gains" type="number" step="0.01" min="0" value="{{ '%.2f'|format(form.short_term_gains) }}"/>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="qualified_dividends">Qualified dividends / yield ($)</label>
+            <input id="qualified_dividends" name="qualified_dividends" type="number" step="0.01" min="0" value="{{ '%.2f'|format(form.qualified_dividends) }}"/>
+          </div>
+          <div>
+            <label for="long_term_gains">Long-term capital gains ($)</label>
+            <input id="long_term_gains" name="long_term_gains" type="number" step="0.01" min="0" value="{{ '%.2f'|format(form.long_term_gains) }}"/>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="other_investment_income">Other NII for NIIT ($)</label>
+            <input id="other_investment_income" name="other_investment_income" type="number" step="0.01" min="0" value="{{ '%.2f'|format(form.other_investment_income) }}"/>
+          </div>
+          <div>
+            <label for="deduction">Deduction / exemption ($)</label>
+            <input id="deduction" name="deduction" type="number" step="0.01" min="0" placeholder="default std/exemption" value="{% if form.deduction is not none %}{{ '%.2f'|format(form.deduction) }}{% endif %}"/>
+          </div>
+        </div>
+
+        <label for="run_id">Optional: prefills yield from backtest run id</label>
+        <input id="run_id" name="run_id" type="text" placeholder="e.g. a1b2c3d4e5f6" value="{{ form.run_id or '' }}"/>
+
+        <div class="tax-actions">
+          <button type="submit">Calculate</button>
+          <a class="btn secondary" href="/tax?token={{ query_token | urlencode }}">Reset</a>
+          <a class="btn secondary" href="/backtest?token={{ query_token | urlencode }}">Backtest lab</a>
+        </div>
+      </form>
+      {% if error %}
+      <p style="color:var(--chip-sell);margin-top:0.85rem">{{ error }}</p>
+      {% endif %}
+      {% if prefill_note %}
+      <p class="muted" style="margin-top:0.85rem;font-size:0.85rem">{{ prefill_note }}</p>
+      {% endif %}
+    </section>
+
+    <section class="tax-card">
+      <h2>Federal estimate{% if entity_label %} — {{ entity_label }}{% endif %}</h2>
+      {% if result %}
+      <div class="tax-kpi">
+        <div class="box">
+          <div class="lbl">Total federal</div>
+          <div class="val">${{ '%.0f'|format(result.total_federal) }}</div>
+        </div>
+        <div class="box">
+          <div class="lbl">Effective rate</div>
+          <div class="val">{{ '%.1f'|format(result.effective_rate * 100) }}%</div>
+        </div>
+        <div class="box">
+          <div class="lbl">Income tax</div>
+          <div class="val">${{ '%.0f'|format(result.income_tax) }}</div>
+        </div>
+        <div class="box">
+          <div class="lbl">NIIT (3.8%)</div>
+          <div class="val">${{ '%.0f'|format(result.niit) }}</div>
+        </div>
+      </div>
+
+      <table class="tax-table">
+        <tr><td>Ordinary taxable</td><td class="num">${{ '%.0f'|format(result.ordinary_taxable) }}</td></tr>
+        <tr><td>Preferential taxable (QDI + LTCG)</td><td class="num">${{ '%.0f'|format(result.preferential_taxable) }}</td></tr>
+        <tr><td>Ordinary tax</td><td class="num">${{ '%.0f'|format(result.ordinary_tax) }}</td></tr>
+        <tr><td>Preferential tax</td><td class="num">${{ '%.0f'|format(result.preferential_tax) }}</td></tr>
+        <tr><td>Deduction / exemption used</td><td class="num">${{ '%.0f'|format(result.deduction_used) }}</td></tr>
+        <tr><td>Marginal ordinary</td><td class="num">{{ '%.0f'|format(result.marginal_ordinary_rate * 100) }}%</td></tr>
+        <tr><td>Marginal preferential</td><td class="num">{{ '%.0f'|format(result.marginal_pref_rate * 100) }}%</td></tr>
+        <tr><td>NIIT threshold</td><td class="num">${{ '%.0f'|format(result.brackets.niit_threshold) }}</td></tr>
+      </table>
+
+      <h2 style="margin-top:1rem">Why trusts differ</h2>
+      <p class="muted" style="font-size:0.85rem;margin:0.35rem 0 0.5rem">
+        Trust brackets are compressed — the 37% ordinary rate and 20% LTCG rate hit at much lower income than for individuals.
+        Keeping idle yield/skim inside a trust can accelerate tax vs distributing (DNI) or holding in an individual account.
+      </p>
+      <ul class="tax-notes">
+        {% for n in result.notes %}
+        <li>{{ n }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Enter income / gains and hit Calculate. Qualified dividends map to your backtest idle yield cash.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="tax-disclaimer">
+    Estimate only. Does not file anything, does not replace a CPA, and ignores state tax, AMT, wash sales,
+    trust distribution deductions, and grantor vs non-grantor nuances.
+  </div>
+</div>
+{% endblock %}

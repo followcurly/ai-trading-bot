@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .arch-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .arch-page-actions a { font-weight: 500; }
+  article.arch-doc {
+    max-width: 75ch;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  article.arch-doc h1 {
+    font-size: 1.65rem;
+    margin: 0 0 0.75rem;
+    line-height: 1.25;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+  article.arch-doc h2 {
+    font-size: 1.2rem;
+    margin: 1.75rem 0 0.65rem;
+    color: var(--fg);
+  }
+  article.arch-doc h3 {
+    font-size: 1.05rem;
+    margin: 1.25rem 0 0.5rem;
+  }
+  article.arch-doc p { margin: 0.5rem 0; color: var(--fg); }
+  article.arch-doc ul, article.arch-doc ol {
+    margin: 0.35rem 0 0.75rem;
+    padding-left: 1.35rem;
+    color: var(--fg);
+  }
+  article.arch-doc li { margin: 0.2rem 0; }
+  article.arch-doc hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+  article.arch-doc code {
+    background: var(--row-hover);
+    padding: 0.12rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  article.arch-doc pre {
+    margin: 0.75rem 0;
+    padding: 0.85rem 1rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  article.arch-doc pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+  }
+  article.arch-doc table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0 1rem;
+    font-size: 0.88rem;
+  }
+  article.arch-doc th, article.arch-doc td {
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.55rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  article.arch-doc thead th {
+    background: var(--thead-bg);
+    font-weight: 600;
+  }
+  article.arch-doc tbody tr:nth-child(even) { background: var(--row-alt); }
+  article.arch-doc a { word-break: break-word; }
+  article.arch-doc strong { color: var(--fg); }
+</style>
+{% endblock %}
+{% block body %}
+<p class="arch-page-actions">
+  <a href="/flow?token={{ query_token | urlencode }}">← Flow diagram</a>
+  <a href="/?token={{ query_token | urlencode }}">Cycles</a>
+  <span>Source file in repo: <code>docs/ARCHITECTURE.md</code></span>
+</p>
+<article class="arch-doc" aria-label="Architecture reference">
+{{ architecture_html | safe }}
+</article>
+{% endblock %}

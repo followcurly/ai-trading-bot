@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<style>
+  .chart-grid { display: grid; gap: 1.25rem; margin: 1.5rem 0; }
+  .chart-grid svg { max-width: 100%; }
+  .promo-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0.75rem 0; }
+  .promo-table th, .promo-table td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+  .pass { color: var(--chip-buy); font-weight: 600; }
+  .fail { color: var(--chip-sell); font-weight: 600; }
+  .warn-box { background: var(--chip-sell-bg); border: 1px solid var(--chip-sell); border-radius: 8px; padding: 0.75rem 1rem; margin: 1rem 0; }
+  .summary-box { background: var(--row-alt); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .summary-box h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+  .summary-box ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+  .nav-strip { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem; }
+  details.gloss { margin: 0.5rem 0; }
+  .filter-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 1rem 0; }
+</style>
+{% endblock %}
+{% block body %}
+<p><a href="/?token={{ query_token | urlencode }}">← Cycles</a></p>
+<h1>Research — what the hell is going on</h1>
+
+<div class="nav-strip">
+  <span>Live bot profile: <code>{{ trading_profile }}</code></span>
+  <a href="/flow?token={{ query_token | urlencode }}">Flow diagram</a>
+  <a href="/architecture?token={{ query_token | urlencode }}">Architecture</a>
+  <a href="/positions?token={{ query_token | urlencode }}">Open positions</a>
+</div>
+
+<form class="filter-form" method="get">
+  {% if query_token %}<input type="hidden" name="token" value="{{ query_token }}"/>{% endif %}
+  <label>Profile filter
+    <select name="profile" onchange="this.form.submit()">
+      <option value="default" {% if profile == 'default' %}selected{% endif %}>default</option>
+      <option value="yolo_options" {% if profile == 'yolo_options' %}selected{% endif %}>yolo_options</option>
+    </select>
+  </label>
+  <label>Days
+    <select name="days" onchange="this.form.submit()">
+      {% for d in [7, 14, 30, 90] %}
+      <option value="{{ d }}" {% if days == d %}selected{% endif %}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+
+{% if narrative %}
+<div class="summary-box">
+  <h2>{{ narrative.headline }}</h2>
+  <ul>
+    {% for b in narrative.bullets %}
+    <li>{{ b }}</li>
+    {% endfor %}
+  </ul>
+</div>
+  {% for w in narrative.warnings %}
+  <div class="warn-box">{{ w }}</div>
+  {% endfor %}
+{% endif %}
+
+<h2>How to read this page</h2>
+<p class="muted">
+  Each <strong>cycle</strong> is one symbol scan: Haiku proposes BUY/SELL/HOLD → risk may change it → executor may place an order.
+  This page replays the journal — it does not predict future trades.
+</p>
+
+<details class="gloss" open>
+  <summary><strong>Action codes</strong> (from journal)</summary>
+  <table class="promo-table">
+    {% for code, desc in action_glossary.items() %}
+    <tr><td><code>{{ code }}</code></td><td>{{ desc }}</td></tr>
+    {% endfor %}
+  </table>
+</details>
+
+<details class="gloss">
+  <summary><strong>Exit reasons</strong> (when action was SELL)</summary>
+  <table class="promo-table">
+    {% for code, desc in exit_glossary.items() %}
+    <tr><td><code>{{ code }}</code></td><td>{{ desc }}</td></tr>
+    {% endfor %}
+  </table>
+</details>
+
+{% if by_action or by_execute_status %}
+<h2>Counts (last {{ days }}d, profile <code>{{ profile }}</code>)</h2>
+<table class="promo-table">
+  <tr><th>Journal action</th><th>Count</th></tr>
+  {% for k, v in by_action|dictsort %}
+  <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+  {% endfor %}
+</table>
+{% if by_execute_status %}
+<table class="promo-table">
+  <tr><th>Execute status</th><th>Count</th></tr>
+  {% for k, v in by_execute_status|dictsort %}
+  <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endif %}
+
+{% if promotion %}
+<h2>Paper promotion gate</h2>
+<p class="muted">For taking YOLO from paper toward live — see <code>docs/PAPER_PROMOTION.md</code>.</p>
+<table class="promo-table">
+  <tr><th>Check</th><th>Result</th></tr>
+  <tr><td>Closed trades (≥ {{ thresholds.min_closed_trades }})</td>
+      <td class="{{ 'pass' if promotion.pass_closed_trades else 'fail' }}">{{ promotion.closed_trades }}</td></tr>
+  <tr><td>Win rate (≥ {{ (thresholds.min_win_rate * 100)|int }}%)</td>
+      <td class="{{ 'pass' if promotion.pass_win_rate else 'fail' }}">{{ (promotion.win_rate * 100)|round(1) }}%</td></tr>
+  <tr><td>Profit factor (≥ {{ thresholds.min_profit_factor }})</td>
+      <td class="{{ 'pass' if promotion.pass_profit_factor else 'fail' }}">{{ promotion.profit_factor|round(2) }}</td></tr>
+  <tr><td>Max drawdown (≤ {{ (thresholds.max_drawdown_pct * 100)|int }}%)</td>
+      <td class="{{ 'pass' if promotion.pass_drawdown else 'fail' }}">{{ (promotion.max_drawdown_pct * 100)|round(1) }}%</td></tr>
+</table>
+<p><strong>Overall:</strong>
+  <span class="{{ 'pass' if promotion.pass_all else 'fail' }}">{{ 'PASS' if promotion.pass_all else 'FAIL' }}</span></p>
+{% endif %}
+
+<h2>Charts</h2>
+<div class="chart-grid">
+  {% for name, svg in charts.items() %}
+  <div title="{{ name }}">{{ svg|safe }}</div>
+  {% endfor %}
+  {% if not charts %}
+  <p class="muted">Not enough journal equity data yet for charts.</p>
+  {% endif %}
+</div>
+
+{% if exit_reason_counts %}
+<h2>Exit reasons (frequency)</h2>
+<table class="promo-table">
+  {% for k, v in exit_reason_counts|dictsort(reverse=true, by='value') %}
+  <tr><td><code>{{ k }}</code></td><td>{{ v }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if closed_trades %}
+<h2>Recent SELL rows (sample)</h2>
+<table class="promo-table">
+  <tr><th>Time</th><th>Symbol</th><th>Reason</th><th>PnL</th><th>Status</th></tr>
+  {% for t in closed_trades %}
+  <tr>
+    <td>{{ t.timestamp|human_timestamp }}</td>
+    <td>{{ t.symbol }}</td>
+    <td><code>{{ t.exit_reason }}</code></td>
+    <td>{% if t.realized_pnl is not none %}${{ "%.2f"|format(t.realized_pnl) }}{% else %}—{% endif %}</td>
+    <td>{{ t.execute_status or "—" }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<p class="muted">CLI: <code>PYTHONPATH=. python scripts/profile_paper_metrics.py --profile {{ profile }} --days {{ days }} --format md</code></p>
+{% endblock %}

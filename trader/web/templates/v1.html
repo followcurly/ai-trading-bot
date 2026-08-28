@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block body %}
+<p class="muted"><a href="/architecture?token={{ query_token | urlencode }}">← Architecture</a></p>
+<h1>v1 experiment — closed</h1>
+<p class="muted">
+  Retired {{ summary.retired }} · frozen journal under <code>data/archive/v1/</code>.
+  Live Cycles is for v2 red-day buy &amp; hold.
+</p>
+
+{% if summary.empty %}
+<p>No frozen v1 rows found. Run <code>python scripts/freeze_v1_baseline.py</code>.</p>
+{% else %}
+
+<div class="strip">
+  <div class="card"><strong>{{ summary.total_cycles }}</strong><br/><span class="muted">cycles</span></div>
+  <div class="card"><strong>{{ summary.unique_symbols }}</strong><br/><span class="muted">symbols</span></div>
+  <div class="card"><strong>{{ summary.orders_placed }}</strong><br/><span class="muted">orders placed</span></div>
+  <div class="card"><strong>{{ "%.2f"|format(summary.equity.pnl) }}</strong><br/><span class="muted">P&amp;L ({{ "%.1f"|format(summary.equity.pnl_pct) }}%)</span></div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <p style="margin:0 0 0.5rem;"><strong>Why it was retired</strong></p>
+  <p class="muted" style="margin:0;">{{ summary.why }}</p>
+</div>
+
+<h2>Equity</h2>
+<table>
+  <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+  <tbody>
+    <tr><td>Period start</td><td>{{ summary.period.start | human_timestamp }}</td></tr>
+    <tr><td>Period end</td><td>{{ summary.period.end | human_timestamp }}</td></tr>
+    <tr><td>Start equity</td><td class="num">{{ "%.2f"|format(summary.equity.start) }}</td></tr>
+    <tr><td>Peak equity</td><td class="num">{{ "%.2f"|format(summary.equity.peak) }}</td></tr>
+    <tr><td>Floor equity</td><td class="num">{{ "%.2f"|format(summary.equity.floor) }}</td></tr>
+    <tr><td>End equity</td><td class="num">{{ "%.2f"|format(summary.equity.end) }}</td></tr>
+    <tr><td>Max drawdown (peak→floor in journal)</td><td class="num">{{ "%.2f"|format(summary.equity.max_drawdown) }} ({{ "%.1f"|format(summary.equity.max_drawdown_pct) }}%)</td></tr>
+  </tbody>
+</table>
+
+<h2>Actions</h2>
+<table>
+  <thead><tr><th>Action</th><th class="num">Count</th></tr></thead>
+  <tbody>
+  {% for row in summary.actions %}
+    <tr><td><span class="chip chip-{{ row.key|lower }}">{{ row.key }}</span></td><td class="num">{{ row.count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Execute status</h2>
+<table>
+  <thead><tr><th>Status</th><th class="num">Count</th></tr></thead>
+  <tbody>
+  {% for row in summary.execute_status %}
+    <tr><td><span class="chip chip-{{ row.key or 'not_attempted' }}">{{ row.key or '(empty)' }}</span></td><td class="num">{{ row.count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if summary.buy_strategies %}
+<h2>BUY strategies</h2>
+<table>
+  <thead><tr><th>Strategy</th><th class="num">Count</th></tr></thead>
+  <tbody>
+  {% for row in summary.buy_strategies %}
+    <tr><td><code>{{ row.key }}</code></td><td class="num">{{ row.count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if summary.profiles %}
+<h2>Profiles (journal tags)</h2>
+<table>
+  <thead><tr><th>Profile</th><th class="num">Rows</th></tr></thead>
+  <tbody>
+  {% for row in summary.profiles %}
+    <tr><td><code>{{ row.key }}</code></td><td class="num">{{ row.count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if summary.top_symbols_placed %}
+<h2>Top symbols (orders placed)</h2>
+<table>
+  <thead><tr><th>Symbol</th><th class="num">Placed</th></tr></thead>
+  <tbody>
+  {% for row in summary.top_symbols_placed %}
+    <tr><td>{{ row.symbol }}</td><td class="num">{{ row.count }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Artifacts</h2>
+<ul>
+  <li>Frozen DB: <code>{{ summary.artifacts.db }}</code></li>
+  <li>Frozen JSONL: <code>{{ summary.artifacts.jsonl }}</code></li>
+  <li>Retired code: <code>{{ summary.artifacts.code }}</code></li>
+  <li>Host tarball: <code>{{ summary.artifacts.tarball }}</code></li>
+  <li>Note: <a href="/architecture?token={{ query_token | urlencode }}">Architecture</a> · <code>RETIRED_V1.md</code></li>
+</ul>
+
+{% endif %}
+
+<div class="card" style="margin-top:1.5rem;">
+  <p style="margin:0 0 0.5rem;"><strong>v2 starting book</strong></p>
+  <p class="muted" style="margin:0;">
+    Keeping this same Alpaca paper account (no reset / no new keys).
+    v2 starts from current equity with an empty live journal.
+    See <code>docs/BASELINE.md</code>.
+  </p>
+  {% if live_account %}
+  <p class="muted" style="margin:0.75rem 0 0;">
+    Live paper now: equity <strong>{{ "%.2f"|format(live_account.equity|float) }}</strong>
+    · cash <strong>{{ "%.2f"|format(live_account.cash|float) }}</strong>
+    · open positions <strong>{{ live_account.open_positions }}</strong>
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

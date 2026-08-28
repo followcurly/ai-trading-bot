@@ -1,0 +1,806 @@
+{% extends "base.html" %}
+{% block title %}Backtest {{ run.id if run else '—' }} — Trade logic{% endblock %}
+{% block extra_head %}
+<script src="/static/chart.umd.min.js"></script>
+<style>
+  .bt-page { max-width: 1100px; }
+  .bt-head {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline;
+    margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border);
+  }
+  .bt-head h1 { margin: 0; font-size: 1.35rem; letter-spacing: -0.02em; }
+  .bt-meta { color: var(--muted); font-size: 0.88rem; }
+  .bt-safe {
+    font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); margin-left: auto;
+  }
+  .bt-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+    animation: btFade 0.45s ease-out both;
+  }
+  @media (max-width: 800px) {
+    .bt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @keyframes btFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  .bt-kpi {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    background: var(--row-alt);
+  }
+  .bt-kpi .lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .bt-kpi .val { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 0.15rem; }
+  .bt-iso {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 1.1rem;
+    animation: btFade 0.5s ease-out 0.08s both;
+  }
+  .bt-iso .bt-kpi .val { font-size: 1.05rem; }
+  .bt-pos { color: var(--chip-buy); }
+  .bt-neg { color: var(--chip-sell); }
+  .bt-chart-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem 0.5rem;
+    margin-bottom: 0.75rem;
+    background: var(--bg);
+  }
+  .bt-chart-wrap h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+  .bt-chart-box { position: relative; height: 300px; }
+  .bt-dd-box { position: relative; height: 120px; margin-top: 0.35rem; }
+  .bt-skim {
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    margin: 0 0 1rem;
+    background: rgba(251, 191, 36, 0.06);
+    animation: btFade 0.5s ease-out 0.1s both;
+  }
+  .bt-skim h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+  .bt-skim-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-top: 0.55rem;
+  }
+  @media (max-width: 800px) {
+    .bt-skim-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .bt-skim .bt-kpi { background: var(--bg); }
+  .bt-skim-note { color: var(--muted); font-size: 0.8rem; margin: 0.55rem 0 0; line-height: 1.35; }
+  .bt-end-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  .bt-end-tags span {
+    font-size: 0.76rem; font-weight: 650; padding: 0.18rem 0.5rem;
+    border-radius: 999px; border: 1px solid var(--border);
+  }
+  tr.bt-skim-row td { background: rgba(251, 191, 36, 0.08); }
+  .chip-skim { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+  .bt-controls {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center;
+    margin: 0.65rem 0 0.25rem; font-size: 0.9rem;
+  }
+  .bt-controls button, .bt-controls select {
+    font: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 0.35rem 0.7rem; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--row-alt); color: var(--fg); cursor: pointer;
+  }
+  .bt-controls input[type="range"] { flex: 1; min-width: 140px; }
+  .bt-asof { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 11rem; }
+  .bt-blotter h2 { margin: 1.25rem 0 0.5rem; font-size: 1rem; }
+  .bt-blotter table { font-size: 0.88rem; }
+  tr.bt-future { opacity: 0.35; }
+  tr.bt-hit { outline: 1px solid var(--accent); }
+  .chip-buy { background: var(--chip-buy-bg); color: var(--chip-buy); }
+  .bt-assumptions { margin-top: 1.5rem; color: var(--muted); font-size: 0.9rem; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="bt-page">
+  {% if not run %}
+  <p class="muted">Run not found.</p>
+  <p><a href="/backtest?token={{ query_token | urlencode }}">← Backtest lab</a></p>
+  {% else %}
+  <div class="bt-head">
+    <div>
+      <h1>Run <code>{{ run.id }}</code></h1>
+      <div class="bt-meta">
+        {{ run.start_date }} → {{ run.end_date }}
+        · {{ run.mode | default('buy_hold') }}{% if run.year_end_skim or (run.params or {}).get('year_end_skim') or (run.mode or '') == 'year_end_skim' %} +skim{% endif %}
+        · mix {{ run.universe | default('balanced') }}
+        {% if (run.mode or 'buy_hold') in ('buy_hold', 'year_end_skim') %}· red {{ run.red_lookback | default(1) }}d{% endif %}
+        {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or (run.mode or '') == 'year_end_skim' %}· skim {{ '%.0f'|format(((run.skim_pct or (run.params or {}).get('skim_pct') or 0.1) * 100)) }}%/yr{% endif %}
+        · cash ${{ '%.0f'|format(run.cash) }}
+        · fill {{ run.fill_rule }}
+        · {{ '%.0f'|format(run.cost_bps) }} bps
+      </div>
+    </div>
+    <span class="bt-safe">does not touch paper</span>
+  </div>
+
+  <div class="bt-kpis" id="bt-kpis">
+    <div class="bt-kpi"><div class="lbl">Total return</div><div class="val" id="k-ret">—</div></div>
+    <div class="bt-kpi"><div class="lbl">vs SPY</div><div class="val" id="k-spy">—</div></div>
+    <div class="bt-kpi"><div class="lbl">Max drawdown</div><div class="val" id="k-dd">—</div></div>
+    <div class="bt-kpi"><div class="lbl">CAGR</div><div class="val" id="k-cagr">—</div></div>
+    <div class="bt-kpi"><div class="lbl">Trades</div><div class="val" id="k-tr">—</div></div>
+  </div>
+  <div class="bt-iso" style="grid-template-columns:1.2fr 1fr 1fr">
+    <div class="bt-kpi" style="border-color: var(--chip-buy);">
+      <div class="lbl">Idle yield cash (dividends)</div>
+      <div class="val" id="k-div">
+        {% set div = (run.metrics.dividends if run and run.metrics else None) %}
+        {% set br = (run.metrics.cash_breakdown if run and run.metrics else None) %}
+        {% if br and br.ending_div is not none %}
+          ${{ '%.0f'|format(br.ending_div) }}
+        {% elif div and div.ending_cash_div is not none %}
+          ${{ '%.0f'|format(div.ending_cash_div) }}
+        {% elif div and div.total_cash is not none %}
+          ${{ '%.0f'|format(div.total_cash) }}
+        {% else %}—{% endif %}
+      </div>
+      <div class="muted" style="font-size:0.78rem;margin-top:0.25rem">
+        Credited on each ex-date into <strong>cash_div</strong> — sits idle, not reinvested, separate from skim cash.
+      </div>
+    </div>
+    <div class="bt-kpi">
+      <div class="lbl">In-sample</div>
+      <div class="val" id="k-is">—</div>
+    </div>
+    <div class="bt-kpi">
+      <div class="lbl">Out-of-sample (last 30%)</div>
+      <div class="val" id="k-oos">—</div>
+    </div>
+  </div>
+  {% if run and run.metrics and run.metrics.dividends and run.metrics.dividends.by_symbol %}
+  <p class="muted" style="margin:0 0 1rem;font-size:0.88rem">
+    Yield by symbol:
+    {% for sym, amt in run.metrics.dividends.by_symbol.items() %}
+      <strong>{{ sym }}</strong> ${{ '%.0f'|format(amt) }}{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+
+  {% set skim = (run.metrics.skim if run and run.metrics else None) %}
+  {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or skim %}
+  <section class="bt-skim" id="bt-skim">
+    <h2>Year-end skim — cash vs staying invested</h2>
+    <p class="bt-skim-note">
+      Total wealth = invested + free cash + <strong>skim cash</strong> + <strong>yield cash</strong>.
+      Skim and yield both sit idle (not redeployed). Amber is the same plan if you never skimmed.
+    </p>
+    <div class="bt-skim-grid">
+      <div class="bt-kpi">
+        <div class="lbl">Cash raised by skims</div>
+        <div class="val" id="k-skim-raised">
+          {% if skim and skim.total_proceeds is not none %}${{ '%.0f'|format(skim.total_proceeds) }}{% else %}—{% endif %}
+        </div>
+        <div class="muted" style="font-size:0.75rem;margin-top:0.2rem">
+          {% if skim %}{{ skim.event_count or 0 }} year-end sale{{ '' if (skim.event_count or 0) == 1 else 's' }} · {{ '%.0f'|format((skim.skim_pct or 0.1) * 100) }}%/yr{% endif %}
+        </div>
+      </div>
+      <div class="bt-kpi">
+        <div class="lbl">Ending skim cash</div>
+        <div class="val" id="k-skim-cash">
+          {% if skim and skim.ending_cash_skim is not none %}${{ '%.0f'|format(skim.ending_cash_skim) }}
+          {% elif skim and skim.ending_cash is not none %}${{ '%.0f'|format(skim.ending_cash) }}
+          {% else %}—{% endif %}
+        </div>
+        <div class="muted" style="font-size:0.75rem;margin-top:0.2rem">
+          {% set br = (run.metrics.cash_breakdown if run and run.metrics else None) %}
+          {% if skim and skim.ending_cash_div is not none %}yield cash ${{ '%.0f'|format(skim.ending_cash_div) }} · {% endif %}
+          {% if br and br.ending_div is not none and (skim.ending_cash_div is none) %}yield cash ${{ '%.0f'|format(br.ending_div) }} · {% endif %}
+          {% if skim and skim.ending_invested is not none %}still invested ${{ '%.0f'|format(skim.ending_invested) }}{% endif %}
+        </div>
+      </div>
+      <div class="bt-kpi">
+        <div class="lbl">If you never skimmed</div>
+        <div class="val" id="k-skim-noskim">
+          {% if skim and skim.no_skim_ending_equity is not none %}${{ '%.0f'|format(skim.no_skim_ending_equity) }}{% else %}—{% endif %}
+        </div>
+        <div class="muted" style="font-size:0.75rem;margin-top:0.2rem">
+          {% if skim and skim.no_skim_total_return is not none %}{{ '%.1f'|format(skim.no_skim_total_return * 100) }}% total return{% endif %}
+        </div>
+      </div>
+      <div class="bt-kpi">
+        <div class="lbl">Wealth vs never skim</div>
+        <div class="val {% if skim and (skim.wealth_delta_vs_no_skim or 0) >= 0 %}bt-pos{% elif skim %}bt-neg{% endif %}" id="k-skim-delta">
+          {% if skim and skim.wealth_delta_vs_no_skim is not none %}
+            {% if skim.wealth_delta_vs_no_skim >= 0 %}+${{ '%.0f'|format(skim.wealth_delta_vs_no_skim) }}{% else %}-${{ '%.0f'|format(-skim.wealth_delta_vs_no_skim) }}{% endif %}
+          {% else %}—{% endif %}
+        </div>
+        <div class="muted" style="font-size:0.75rem;margin-top:0.2rem">
+          {% if skim and skim.wealth_delta_pct_pts is not none %}
+            {{ '%+.1f'|format(skim.wealth_delta_pct_pts * 100) }} pct pts vs no-skim return
+          {% else %}
+            negative = skim left you with less total wealth
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="bt-chart-wrap">
+    <h2 id="eq-title">{% if run.year_end_skim or (run.params or {}).get('year_end_skim') or skim %}Wealth, skim &amp; yield cash{% else %}Wealth, yield cash &amp; SPY{% endif %}</h2>
+    <p class="muted" style="font-size:0.8rem;margin:0.15rem 0 0.55rem">
+      Left axis = wealth / invested / SPY. Right axis = idle cash buckets (skim, yield, free) so small cash lines stay visible.
+    </p>
+    <p class="muted" id="eq-help" style="margin:0 0 0.4rem;font-size:0.82rem">
+      {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or skim %}
+      Total wealth = invested holdings + cash from year-end sales. Amber shows what total wealth would be without those sales.
+      {% else %}
+      Strategy equity vs SPY buy &amp; hold.
+      {% endif %}
+    </p>
+    <div class="bt-chart-box"><canvas id="eqChart"></canvas></div>
+    <div class="bt-end-tags" id="eq-end-tags"></div>
+    <div class="bt-dd-box"><canvas id="ddChart"></canvas></div>
+    <div class="bt-controls">
+      <button type="button" id="btn-play">Pause</button>
+      <button type="button" id="btn-end">Jump to end</button>
+      <label>Speed
+        <select id="speed">
+          <option value="1">1×</option>
+          <option value="5">5×</option>
+          <option value="20" selected>20×</option>
+        </select>
+      </label>
+      <input type="range" id="scrub" min="0" max="1" value="0" step="1"/>
+      <span class="bt-asof" id="asof">—</span>
+    </div>
+  </section>
+
+  <section class="bt-blotter">
+    <h2>Trade blotter</h2>
+    <label class="muted" style="display:block;margin-bottom:0.4rem;font-size:0.85rem">
+      <input type="checkbox" id="only-so-far" checked/> Only trades so far
+    </label>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Sleeve</th><th>Symbol</th><th>Side</th>
+          <th class="num">Qty</th><th class="num">Price</th>
+          <th class="num">Notional</th><th class="num">Costs</th>
+        </tr>
+      </thead>
+      <tbody id="blotter-body">
+        {% for t in run.trades %}
+        {% set note = ((t.meta or {}).get('note') if t.meta else '') or '' %}
+        {% set is_skim = (t.side or '') == 'sell' and 'year_end_skim' in note %}
+        {% set is_div = (t.side or '') == 'div' %}
+        <tr data-dt="{{ t.dt }}" class="bt-future{% if is_skim %} bt-skim-row{% endif %}" {% if is_skim %}data-skim="1"{% endif %}>
+          <td>{{ t.dt }}{% if is_skim %} <span class="muted" style="font-size:0.75rem">· year-end</span>{% elif is_div %} <span class="muted" style="font-size:0.75rem">· ex-div</span>{% endif %}</td>
+          <td>{{ t.sleeve or '—' }}</td>
+          <td>{{ t.symbol }}</td>
+          <td>
+            {% if is_skim %}
+            <span class="chip chip-skim">SKIM</span>
+            {% elif is_div %}
+            <span class="chip" style="background:rgba(45,212,191,0.18);color:#2dd4bf">YIELD</span>
+            {% elif (t.side or 'buy') == 'sell' %}
+            <span class="chip chip-sell">SELL</span>
+            {% else %}
+            <span class="chip chip-buy">BUY</span>
+            {% endif %}
+          </td>
+          <td class="num">{{ '%.4f'|format(t.qty) }}</td>
+          <td class="num">{{ '%.2f'|format(t.price) }}</td>
+          <td class="num">{{ '%.2f'|format(t.notional) }}</td>
+          <td class="num">{{ '%.2f'|format(t.cost or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not run.trades %}
+    <p class="muted">No simulated fills in this window.</p>
+    {% endif %}
+  </section>
+
+  <details class="bt-assumptions">
+    <summary>Assumptions</summary>
+    <ul>
+      <li><strong>buy_hold</strong>: red if <code>close[T] &lt; close[T−N]</code>; buy underweight sleeves; hold. Lookback N only for this plan.</li>
+      <li><strong>dca</strong>: split starting cash evenly across the first N months into sleeve primaries, then hold.</li>
+      <li><strong>lump_sum</strong>: invest all cash on day one into sleeve primaries, then hold.</li>
+      <li><strong>year-end skim</strong> (optional add-on): on the last trading day of each calendar year, sell a % of every holding for cash. Works with any plan above.</li>
+      <li>Default fill at next session open (no look-ahead). Same-close fill is optimistic.</li>
+      <li>Cost haircut applied per fill (bps). Benchmark is 100% SPY buy &amp; hold from the first open.</li>
+      <li>Last 30% of the selected range is tagged out-of-sample. A positive curve is not proof of edge.</li>
+      <li>Bars: Alpaca IEX daily, adjusted. ETF universe has low survivorship risk vs single names, but history length still varies by ticker.</li>
+    </ul>
+  </details>
+
+  <p style="margin-top:1.25rem"><a href="/backtest?token={{ query_token | urlencode }}">← Backtest lab</a></p>
+
+  <script id="bt-data" type="application/json">{{ payload | tojson }}</script>
+  <script>
+  (function () {
+    try {
+    const raw = document.getElementById("bt-data").textContent;
+    const data = JSON.parse(raw);
+    const eq = data.equity || [];
+    const metrics = data.metrics || {};
+    const splitDate = metrics.split_date || null;
+    const startEq = eq.length ? eq[0].strategy_equity : 0;
+    const startSpy = eq.length ? eq[0].spy_equity : 0;
+
+    function pct(x) {
+      if (x == null || isNaN(x)) return "—";
+      const s = (x * 100).toFixed(1) + "%";
+      return (x >= 0 ? "+" : "") + s.replace("+-", "-");
+    }
+    function cls(el, v) {
+      el.classList.remove("bt-pos", "bt-neg");
+      if (v == null || isNaN(v)) return;
+      el.classList.add(v >= 0 ? "bt-pos" : "bt-neg");
+    }
+    function setFinalKpis() {
+      const f = metrics.full || {};
+      const is = metrics.is || {};
+      const oos = metrics.oos || {};
+      const ret = document.getElementById("k-ret");
+      const spy = document.getElementById("k-spy");
+      const dd = document.getElementById("k-dd");
+      const cagr = document.getElementById("k-cagr");
+      ret.textContent = pct(f.total_return).replace(/^\+/, v => (f.total_return >= 0 ? "+" : ""));
+      if (f.total_return != null) ret.textContent = (f.total_return * 100).toFixed(1) + "%";
+      cls(ret, f.total_return);
+      spy.textContent = pct(f.vs_spy);
+      cls(spy, f.vs_spy);
+      dd.textContent = f.max_drawdown != null ? (f.max_drawdown * 100).toFixed(1) + "%" : "—";
+      cagr.textContent = f.cagr != null ? (f.cagr * 100).toFixed(1) + "%" : "—";
+      document.getElementById("k-tr").textContent = metrics.trade_count != null ? String(metrics.trade_count) : "—";
+      document.getElementById("k-is").textContent =
+        "ret " + (is.total_return != null ? (is.total_return * 100).toFixed(1) + "%" : "—") +
+        " · vs SPY " + pct(is.vs_spy);
+      document.getElementById("k-oos").textContent =
+        "ret " + (oos.total_return != null ? (oos.total_return * 100).toFixed(1) + "%" : "—") +
+        " · vs SPY " + pct(oos.vs_spy);
+    }
+
+    function liveKpis(idx) {
+      if (!eq.length) return;
+      const slice = eq.slice(0, idx + 1);
+      const s0 = slice[0].strategy_equity;
+      const s1 = slice[idx].strategy_equity;
+      const b0 = slice[0].spy_equity;
+      const b1 = slice[idx].spy_equity;
+      const ret = s0 > 0 ? (s1 / s0) - 1 : 0;
+      const spyRet = b0 > 0 ? (b1 / b0) - 1 : 0;
+      let peak = s0, maxDd = 0;
+      for (const p of slice) {
+        if (p.strategy_equity > peak) peak = p.strategy_equity;
+        if (peak > 0) maxDd = Math.min(maxDd, (p.strategy_equity - peak) / peak);
+      }
+      const retEl = document.getElementById("k-ret");
+      const spyEl = document.getElementById("k-spy");
+      const ddEl = document.getElementById("k-dd");
+      retEl.textContent = (ret * 100).toFixed(1) + "%";
+      cls(retEl, ret);
+      spyEl.textContent = pct(ret - spyRet);
+      cls(spyEl, ret - spyRet);
+      ddEl.textContent = (maxDd * 100).toFixed(1) + "%";
+      const dt = slice[idx].dt;
+      let n = 0;
+      for (const t of (data.trades || [])) { if (t.dt <= dt) n++; }
+      document.getElementById("k-tr").textContent = String(n);
+    }
+
+    const labels = eq.map(p => p.dt);
+    const strat = eq.map(p => p.strategy_equity);
+    const spy = eq.map(p => p.spy_equity);
+    const cashSeries = eq.map(p => (p.cash != null ? p.cash : null));
+    const cashFreeSeries = eq.map(p => (p.cash_free != null ? p.cash_free : null));
+    const cashSkimSeries = eq.map(p => (p.cash_skim != null ? p.cash_skim : null));
+    const cashDivSeries = eq.map(p => (p.cash_div != null ? p.cash_div : null));
+    const hasCashBuckets = cashSkimSeries.some(v => v != null && v !== 0)
+      || cashDivSeries.some(v => v != null && v !== 0)
+      || cashFreeSeries.some(v => v != null);
+    const investedSeries = eq.map(p => {
+      if (p.invested != null) return p.invested;
+      if (p.cash != null) return p.strategy_equity - p.cash;
+      return null;
+    });
+    const dds = eq.map(p => (p.drawdown || 0) * 100);
+    const skimMeta = metrics.skim || null;
+    const hasSkim = !!(skimMeta && skimMeta.enabled);
+    const noSkimMap = {};
+    ((skimMeta && skimMeta.no_skim_equity) || []).forEach(p => {
+      noSkimMap[String(p.dt).slice(0, 10)] = p.strategy_equity;
+    });
+    const noSkimSeries = labels.map(d => {
+      const k = String(d).slice(0, 10);
+      return noSkimMap[k] != null ? noSkimMap[k] : null;
+    });
+    const skimEventDates = new Set(((skimMeta && skimMeta.events) || []).map(e => String(e.dt).slice(0, 10)));
+    const skimMarks = labels.map((d, i) => (skimEventDates.has(String(d).slice(0, 10)) ? strat[i] : null));
+    const hasAny = (arr) => arr.some(v => v != null);
+
+    const splitIdx = splitDate ? labels.indexOf(splitDate) : -1;
+    const splitPlugin = {
+      id: "splitLine",
+      afterDraw(chart) {
+        if (splitIdx < 0 || chart.scales.x == null) return;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta.data[splitIdx]) return;
+        const x = meta.data[splitIdx].x;
+        const { top, bottom } = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = "rgba(128,128,128,0.55)";
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        ctx.restore();
+      }
+    };
+
+    const commonOpts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      color: "#e4e4e7",
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            boxWidth: 12,
+            color: "#e4e4e7",
+            filter: (item, chartData) => {
+              // Chart.js 4 passes ChartData as 2nd arg (not the chart instance)
+              const ds = (chartData.datasets || [])[item.datasetIndex];
+              if (!ds || ds.hidden) return false;
+              const vals = ds.data || [];
+              return vals.some(v => v != null);
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y;
+              if (v == null) return ctx.dataset.label + ": —";
+              return ctx.dataset.label + ": $" + Math.round(v).toLocaleString();
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0, color: "#a1a1aa" }, grid: { display: false } },
+        y: {
+          type: "linear",
+          position: "left",
+          title: { display: true, text: "Wealth", color: "#a1a1aa", font: { size: 10 } },
+          ticks: { color: "#a1a1aa", callback: v => "$" + Number(v).toLocaleString() },
+          grid: { color: "rgba(255,255,255,0.08)" }
+        },
+        y1: {
+          type: "linear",
+          position: "right",
+          title: { display: true, text: "Idle cash", color: "#a1a1aa", font: { size: 10 } },
+          ticks: { color: "#a1a1aa", callback: v => "$" + Number(v).toLocaleString() },
+          grid: { drawOnChartArea: false },
+          min: 0
+        }
+      }
+    };
+
+    // Always register the full series set; empty ones stay hidden so indices stay stable.
+    const eqDatasets = [
+      {
+        label: hasSkim ? "Total wealth (with skim)" : "Strategy wealth",
+        data: [],
+        borderColor: "#60a5fa",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 2.5,
+        spanGaps: true,
+        yAxisID: "y"
+      },
+      {
+        label: "If never skimmed",
+        data: [],
+        borderColor: "#fbbf24",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 2.25,
+        borderDash: [6, 4],
+        spanGaps: true,
+        yAxisID: "y",
+        hidden: !hasSkim
+      },
+      {
+        label: "Still invested",
+        data: [],
+        borderColor: "#c084fc",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 1.75,
+        borderDash: [2, 2],
+        spanGaps: true,
+        yAxisID: "y"
+      },
+      {
+        label: "SPY B&H",
+        data: [],
+        borderColor: "#a1a1aa",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 1.5,
+        borderDash: [4, 3],
+        spanGaps: true,
+        yAxisID: "y"
+      },
+      {
+        label: "Skim cash (idle)",
+        data: [],
+        borderColor: "#34d399",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: true,
+        yAxisID: "y1"
+      },
+      {
+        label: "Yield cash (idle)",
+        data: [],
+        borderColor: "#2dd4bf",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: true,
+        yAxisID: "y1"
+      },
+      {
+        label: "Free cash",
+        data: [],
+        borderColor: "#93c5fd",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 1.5,
+        borderDash: [3, 3],
+        spanGaps: true,
+        yAxisID: "y1"
+      },
+      {
+        label: "Total cash (fallback)",
+        data: [],
+        borderColor: "#86efac",
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.05,
+        pointRadius: 0,
+        borderWidth: 1.5,
+        spanGaps: true,
+        yAxisID: "y1",
+        hidden: true
+      },
+      {
+        label: "Year-end skim",
+        data: [],
+        borderColor: "#fbbf24",
+        backgroundColor: "#fbbf24",
+        showLine: false,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointStyle: "triangle",
+        yAxisID: "y",
+        hidden: !hasSkim
+      }
+    ];
+
+    const eqChart = new Chart(document.getElementById("eqChart"), {
+      type: "line",
+      data: { labels: [], datasets: eqDatasets },
+      options: commonOpts,
+      plugins: [splitPlugin]
+    });
+
+    const ddChart = new Chart(document.getElementById("ddChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Drawdown %",
+          data: [],
+          borderColor: "#991b1b",
+          backgroundColor: "rgba(153,27,27,0.12)",
+          fill: true,
+          tension: 0.05,
+          pointRadius: 0,
+          borderWidth: 1.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { ticks: { callback: v => v + "%" }, suggestedMax: 0 }
+        }
+      }
+    });
+
+    let idx = 0;
+    let playing = true;
+    let timer = null;
+    const scrub = document.getElementById("scrub");
+    const asof = document.getElementById("asof");
+    const btnPlay = document.getElementById("btn-play");
+    const onlySoFar = document.getElementById("only-so-far");
+    scrub.max = String(Math.max(0, eq.length - 1));
+
+    function updateBlotter() {
+      const dt = eq[idx] ? eq[idx].dt : "";
+      const rows = document.querySelectorAll("#blotter-body tr");
+      rows.forEach(row => {
+        const rdt = row.getAttribute("data-dt");
+        const hit = rdt <= dt;
+        row.classList.toggle("bt-future", !hit);
+        row.classList.toggle("bt-hit", hit && rdt === dt);
+        if (onlySoFar.checked) {
+          row.style.display = hit ? "" : "none";
+        } else {
+          row.style.display = "";
+        }
+      });
+    }
+
+    function render() {
+      if (!eq.length) return;
+      const n = idx + 1;
+      eqChart.data.labels = labels.slice(0, n);
+      const ds = eqChart.data.datasets;
+      // 0 wealth, 1 no-skim, 2 invested, 3 spy, 4 skim cash, 5 yield cash, 6 free cash, 7 total cash, 8 skim marks
+      ds[0].data = strat.slice(0, n);
+      ds[1].data = hasSkim ? noSkimSeries.slice(0, n) : [];
+      ds[2].data = investedSeries.slice(0, n);
+      ds[3].data = spy.slice(0, n);
+      ds[4].data = cashSkimSeries.slice(0, n);
+      ds[5].data = cashDivSeries.slice(0, n);
+      ds[6].data = cashFreeSeries.slice(0, n);
+      const needFallbackCash = !hasAny(cashSkimSeries) && !hasAny(cashDivSeries) && !hasAny(cashFreeSeries) && hasAny(cashSeries);
+      ds[7].data = needFallbackCash ? cashSeries.slice(0, n) : [];
+      ds[8].data = hasSkim ? skimMarks.slice(0, n) : [];
+      // Structural visibility only (don't fight legend clicks on cash lines)
+      if (!hasSkim) {
+        ds[1].hidden = true;
+        ds[8].hidden = true;
+      }
+      const showCashAxis = hasAny(ds[4].data) || hasAny(ds[5].data) || hasAny(ds[6].data) || hasAny(ds[7].data);
+      if (eqChart.options.scales && eqChart.options.scales.y1) {
+        eqChart.options.scales.y1.display = showCashAxis;
+      }
+      eqChart.update("none");
+      ddChart.data.labels = labels.slice(0, n);
+      ddChart.data.datasets[0].data = dds.slice(0, n);
+      ddChart.update("none");
+      scrub.value = String(idx);
+      const cashNow = eq[idx].cash;
+      const skimNow = eq[idx].cash_skim;
+      const divNow = eq[idx].cash_div;
+      let cashBits = [];
+      if (skimNow != null) cashBits.push("skim $" + Math.round(skimNow).toLocaleString());
+      if (divNow != null) cashBits.push("yield $" + Math.round(divNow).toLocaleString());
+      if (!cashBits.length && cashNow != null) cashBits.push("cash $" + Math.round(cashNow).toLocaleString());
+      asof.textContent = eq[idx].dt + " · wealth $" + Math.round(eq[idx].strategy_equity).toLocaleString()
+        + (cashBits.length ? (" · " + cashBits.join(" · ")) : "");
+      const tags = document.getElementById("eq-end-tags");
+      if (tags && idx >= eq.length - 1) {
+        if (hasSkim) {
+          const noskim = skimMeta.no_skim_ending_equity;
+          const delta = skimMeta.wealth_delta_vs_no_skim;
+          tags.innerHTML =
+            '<span style="color:#60a5fa;border-color:#60a5fa">With skim $' + Math.round(strat[strat.length - 1]).toLocaleString() + '</span>'
+            + (noskim != null ? '<span style="color:#fbbf24;border-color:#fbbf24">Never skimmed $' + Math.round(noskim).toLocaleString() + '</span>' : '')
+            + (skimNow != null ? '<span style="color:#34d399;border-color:#34d399">Skim cash $' + Math.round(skimNow).toLocaleString() + '</span>' : '')
+            + (divNow != null ? '<span style="color:#2dd4bf;border-color:#2dd4bf">Yield cash $' + Math.round(divNow).toLocaleString() + '</span>' : '')
+            + (delta != null ? '<span style="color:' + (delta >= 0 ? '#34d399' : '#f87171') + ';border-color:currentColor">'
+              + (delta >= 0 ? '+' : '-') + '$' + Math.round(Math.abs(delta)).toLocaleString()
+              + ' vs never skim</span>' : '');
+        } else {
+          tags.innerHTML = divNow != null
+            ? '<span style="color:#2dd4bf;border-color:#2dd4bf">Yield cash $' + Math.round(divNow).toLocaleString() + '</span>'
+            : '';
+        }
+      }
+      liveKpis(idx);
+      updateBlotter();
+      if (idx >= eq.length - 1) {
+        playing = false;
+        btnPlay.textContent = "Play";
+        setFinalKpis();
+        stopTimer();
+      }
+    }
+
+    function stopTimer() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+    function startTimer() {
+      stopTimer();
+      const speed = Number(document.getElementById("speed").value) || 20;
+      // ~60fps budget: advance multiple points per tick at high speed
+      const ms = Math.max(16, Math.floor(1000 / (3 * speed)));
+      const step = Math.max(1, Math.round(speed / 5));
+      timer = setInterval(() => {
+        if (!playing) return;
+        idx = Math.min(eq.length - 1, idx + step);
+        render();
+      }, ms);
+    }
+
+    btnPlay.addEventListener("click", () => {
+      if (idx >= eq.length - 1) { idx = 0; }
+      playing = !playing;
+      btnPlay.textContent = playing ? "Pause" : "Play";
+      if (playing) startTimer(); else stopTimer();
+      render();
+    });
+    document.getElementById("btn-end").addEventListener("click", () => {
+      playing = false;
+      btnPlay.textContent = "Play";
+      stopTimer();
+      idx = Math.max(0, eq.length - 1);
+      render();
+      setFinalKpis();
+    });
+    document.getElementById("speed").addEventListener("change", () => {
+      if (playing) startTimer();
+    });
+    scrub.addEventListener("input", () => {
+      playing = false;
+      btnPlay.textContent = "Play";
+      stopTimer();
+      idx = Number(scrub.value) || 0;
+      render();
+      if (idx >= eq.length - 1) setFinalKpis();
+    });
+    onlySoFar.addEventListener("change", updateBlotter);
+
+    setFinalKpis();
+    if (eq.length) {
+      idx = 0;
+      render();
+      startTimer();
+    }
+    } catch (err) {
+      console.error("backtest chart failed", err);
+      const box = document.getElementById("eqChart");
+      if (box && box.parentElement) {
+        const note = document.createElement("p");
+        note.className = "muted";
+        note.style.color = "var(--chip-sell)";
+        note.textContent = "Chart failed to render: " + (err && err.message ? err.message : String(err));
+        box.parentElement.appendChild(note);
+      }
+    }
+  })();
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .blog-hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 60%, #7c3aed 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 2rem 2rem 1.75rem;
+    margin-bottom: 2rem;
+  }
+  .blog-hero h1 { margin: 0 0 0.4rem; font-size: 1.75rem; }
+  .blog-hero p  { margin: 0; opacity: 0.88; font-size: 1rem; }
+  .post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+  .post-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.25rem 1rem;
+    background: var(--row-alt);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: box-shadow 0.15s;
+    text-decoration: none;
+    color: var(--fg);
+  }
+  .post-card:hover {
+    box-shadow: 0 4px 16px rgba(37,99,235,0.18);
+    border-color: var(--accent);
+  }
+  .post-card .post-date {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .post-card h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.3;
+    color: var(--fg);
+  }
+  .post-card .post-excerpt {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .post-card .read-link {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+    margin-top: auto;
+    padding-top: 0.4rem;
+  }
+  .post-badge {
+    display: inline-block;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+    letter-spacing: 0.4px;
+  }
+  .post-badge.kind-launch   { background: linear-gradient(90deg, #7c3aed, #2563eb); }
+  .post-badge.kind-note     { background: #475569; }
+  .post-badge.featured      { background: #d97706; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="blog-hero">
+  <h1>{{ blog.hero_title }}</h1>
+  <p>{{ blog.hero_subtitle }}</p>
+</div>
+
+{% if posts %}
+<div class="post-grid">
+  {% for post in posts %}
+  <a class="post-card" href="/blog/{{ post.slug }}?token={{ query_token | urlencode }}">
+    <span class="post-date">{{ post.date or "—" }}</span>
+    <h2>
+      {{ post.title }}
+      {% if post.kind == "launch" %}<span class="post-badge kind-launch">LAUNCH</span>
+      {% elif post.kind == "note" %}<span class="post-badge kind-note">NOTE</span>
+      {% endif %}
+      {% if post.featured and post.kind != "launch" %}<span class="post-badge featured">FEATURED</span>{% endif %}
+    </h2>
+    {% if post.excerpt %}
+    <p class="post-excerpt">{{ post.excerpt }}</p>
+    {% endif %}
+    <span class="read-link">Read →</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:2.5rem 1.5rem;">
+  <p style="font-size:2rem; margin:0 0 0.75rem;">📭</p>
+  <p style="margin:0; font-size:1rem;">{{ blog.empty_state_title }}</p>
+  <p class="muted" style="margin:0.4rem 0 0;">{{ blog.empty_state_hint }}</p>
+</div>
+{% endif %}
+
+<p class="muted" style="margin-top:1.5rem; font-size:0.82rem;">
+  {{ blog.footer_note }}
+</p>
+{% endblock %}

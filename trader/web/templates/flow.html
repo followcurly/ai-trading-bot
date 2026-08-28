@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .arch-intro {
+    max-width: 70ch;
+    color: var(--muted);
+    margin: 0.25rem 0 1rem;
+  }
+  .arch-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin: 0.25rem 0 1.25rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .arch-meta strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .diagram-card {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+  }
+  .diagram-card pre.mermaid {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    min-width: 760px;
+  }
+  .diagram-card svg g.node {
+    cursor: pointer;
+  }
+  .diagram-card svg g.node:hover > rect,
+  .diagram-card svg g.node:hover > polygon {
+    stroke-width: 2.2px !important;
+    filter: brightness(0.97);
+  }
+  .flow-node-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 42%;
+    overflow: auto;
+    padding: 0.75rem 2.25rem 0.85rem 0.85rem;
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 11px 11px;
+    background: var(--row-alt);
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.08);
+    z-index: 5;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+  .flow-node-panel[hidden] { display: none !important; }
+  .flow-node-panel h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+    padding-right: 1.5rem;
+  }
+  .flow-node-panel p { margin: 0 0 0.35rem; color: var(--fg); }
+  .flow-node-panel .flow-node-meta {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+  }
+  .flow-node-panel-close {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+  }
+  .flow-node-panel-close:hover {
+    background: var(--row-hover);
+    color: var(--fg);
+  }
+  .diagram-hint {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin: 0 0 0.5rem;
+  }
+
+  .flow-zoom-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.5rem;
+  }
+  .flow-zoom-toolbar button {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--row-alt);
+    cursor: pointer;
+    color: var(--fg);
+  }
+  .flow-zoom-toolbar button:hover {
+    background: var(--row-hover);
+  }
+  .flow-zoom-toolbar .flow-zoom-hint {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-left: 0.25rem;
+  }
+  .flow-mermaid-viewport {
+    overflow: auto;
+    max-height: min(70vh, 520px);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fafafa;
+  }
+
+  .stage ul.compact {
+    margin: 0.4rem 0 0;
+    padding-left: 1.15rem;
+    font-size: 0.86rem;
+    color: var(--muted);
+    line-height: 1.42;
+  }
+  .stage ul.compact li { margin: 0.12rem 0; }
+  .stage ul.compact code { font-size: 0.88em; color: var(--fg); }
+
+  .stage-grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin-bottom: 1.25rem;
+  }
+  .stage {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    background: var(--row-alt);
+  }
+  .stage h3 {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+  }
+  .stage h3 .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .stage p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--fg);
+    line-height: 1.45;
+  }
+  .stage code {
+    background: var(--row-hover);
+    color: var(--fg);
+    padding: 0 0.25rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+
+  .rules-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    background: var(--row-alt);
+    margin-bottom: 1.25rem;
+  }
+  .rules-card h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+  .rules-card ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+  .rules-card li code {
+    background: var(--row-hover);
+    color: var(--fg);
+    padding: 0 0.25rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+</style>
+{% endblock %}
+{% block body %}
+<p><a href="/?token={{ query_token | urlencode }}">← All cycles</a></p>
+<h1>{{ page_title }}</h1>
+<p class="arch-intro">
+  This is the architecture, not a timeline. Boxes are modules in <code>trader/</code>;
+  arrows are the actual data flow between external feeds, the per-cycle pipeline, and
+  where the results land.
+</p>
+<div class="card" style="margin-bottom:1rem;">
+  <strong>Written reference</strong> —
+  <a href="/architecture?token={{ query_token | urlencode }}">Architecture</a>
+  and <a href="/research?token={{ query_token | urlencode }}">Research</a>
+  (plain-English replay + charts). Profile: <code>{{ trading_profile | default('default') }}</code>.
+  Long-form doc: <code>docs/ARCHITECTURE.md</code>.
+</div>
+<p class="arch-meta">
+  <span>Cadence: <strong>{{ scheduler_cadence_line }}</strong></span>
+  <span>Journal rows: <strong>{{ total_cycles }}</strong></span>
+  {% if last_cycle_time %}<span>Last cycle: <strong title="{{ last_cycle_time }}">{{ last_cycle_time | human_timestamp }}</strong></span>{% endif %}
+</p>
+<p class="diagram-hint">Tip: click any box in the diagram for a short description and the main Python module.</p>
+
+<div class="diagram-card" id="flow-diagram-card">
+  <div class="flow-zoom-toolbar" role="toolbar" aria-label="Diagram zoom">
+    <button type="button" id="flow-zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" id="flow-zoom-reset" aria-label="Reset zoom">100%</button>
+    <button type="button" id="flow-zoom-in" aria-label="Zoom in">+</button>
+    <span class="flow-zoom-hint">Ctrl+wheel to zoom when focused in the diagram</span>
+  </div>
+  <div id="flow-mermaid-viewport" class="flow-mermaid-viewport" tabindex="0">
+<pre class="mermaid" id="flow-mermaid-source">
+%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 28, "rankSpacing": 55}, "themeVariables": {"fontSize": "13px"}}}%%
+flowchart LR
+  classDef src fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.2px,color:#1e3a8a;
+  classDef proc fill:#dcfce7,stroke:#166534,stroke-width:1.2px,color:#14532d;
+  classDef brain fill:#ede9fe,stroke:#6d28d9,stroke-width:1.2px,color:#4c1d95;
+  classDef risk fill:#ffedd5,stroke:#c2410c,stroke-width:1.2px,color:#7c2d12;
+  classDef exec fill:#fee2e2,stroke:#991b1b,stroke-width:1.2px,color:#7f1d1d;
+  classDef store fill:#e0e7ff,stroke:#4338ca,stroke-width:1.2px,color:#312e81;
+  classDef sink fill:#f4f4f5,stroke:#52525b,stroke-width:1.2px,color:#27272a;
+  classDef sched fill:#fef9c3,stroke:#a16207,stroke-width:1.2px,color:#713f12;
+
+  sched(["APScheduler<br/>4× daily + optional extra<br/>RTH gate · cycle_summary<br/>EOD 16:05 ET · trail exits<br/><i>main.run_cycle</i>"]):::sched
+
+  subgraph SRC["1 · External feeds"]
+    direction TB
+    aMD["Alpaca Market Data<br/>120d daily bars · IEX snapshot"]:::src
+    aTR["Alpaca Trading API<br/>account · positions · screener"]:::src
+    aOPT["Alpaca Options<br/>ATM ± strike ring · IV / mid"]:::src
+    yfin["yfinance<br/>earnings calendar"]:::src
+    rss["RSS<br/>Yahoo per-symbol headlines"]:::src
+    fred["FRED<br/>DGS10 · DGS2 · CPI · unrate"]:::src
+    vix["VIX<br/>level + regime"]:::src
+    cnnfg["CNN Fear &amp; Greed<br/>equity 0–100 score"]:::src
+    fh["Finnhub<br/>earnings calendar · analyst rec"]:::src
+  end
+
+  subgraph PIPE["2 · Pipeline (pre-cycle + per symbol)"]
+    direction TB
+    reg["regime.py<br/>get_market_regime<br/>TTL · cross-asset Haiku"]:::brain
+    prof["profile.py<br/>TRADING_PROFILE<br/>default · yolo_options"]:::proc
+    wl["watchlist.py<br/>static list or screener<br/>bearish hedge · held"]:::proc
+    feed["data_feed.get_market_snapshot<br/>bars → indicators · data_quality<br/>sector · portfolio_context"]:::proc
+    enr["enrichment + macro + options<br/>+ fear/greed + finnhub"]:::proc
+    snap[["market snapshot dict<br/>enrichers + data_quality"]]:::proc
+    subgraph BRN["claude_brain — Haiku trader"]
+      direction TB
+      trd["Trader<br/>Claude Haiku · JSON decision"]:::brain
+    end
+    risk["risk_engine.validate<br/>PDT · sector caps · min DTE · overnight<br/>conf floor · HALT vs soft policy"]:::risk
+    exe["executor.execute<br/>long_stock bracket (GTC)<br/>options: conviction-sized qty"]:::exec
+    journal["journal.write_journal_entry<br/>build_logic_json + debate"]:::proc
+  end
+
+  subgraph SINK["3 · Sinks"]
+    direction TB
+    alp["Alpaca paper account<br/>orders + fills"]:::sink
+    db[("SQLite<br/>trades + risk_state")]:::store
+    jsl[("JSONL append log")]:::store
+    web["FastAPI viewer<br/>/, /positions, /flow,<br/>/research, /architecture"]:::sink
+    hc["Healthchecks.io<br/>cycle heartbeat"]:::sink
+    met[("optional metrics.jsonl<br/>per cycle_summary")]:::store
+    eodMD[("LATEST_EOD.md<br/>eod-YYYY-MM-DD.md")]:::store
+  end
+
+  sched --> reg
+  reg --> prof
+  prof --> wl
+  reg -.->|market_regime| snap
+  wl -->|symbols| feed
+  aMD --> feed
+  aTR --> feed
+  aOPT --> enr
+  yfin --> enr
+  rss --> enr
+  fred --> enr
+  vix --> enr
+  cnnfg --> enr
+  fh --> enr
+    feed --> snap
+  enr --> snap
+  snap --> trd
+  trd -->|JSON| risk
+  risk -->|BUY / SELL| exe
+  risk -.->|HOLD / HALT| journal
+  exe -->|order_id| alp
+  exe --> journal
+  trd -.->|debate in logic_json| journal
+  journal --> db
+  journal --> jsl
+  db --> web
+  sched -.->|ok / fail| hc
+  sched -.->|cycle_summary| met
+  sched -.->|16:05 ET EOD + trail exits| eodMD
+
+  subgraph WKY["4 · Weekly report and blog"]
+    direction TB
+    crSun["cron Sun<br/>weekly_review"]:::sched
+    wrpy["weekly_review.py<br/>Sonnet plus stats"]:::brain
+    mdLatest["LATEST_REVIEW.md<br/>data/reports"]:::store
+    blogUI["Dashboard /blog<br/>human-readable post + charts"]:::sink
+    fbmd["TRADER_FEEDBACK.md<br/>brain context"]:::proc
+    crSun --> wrpy --> mdLatest
+    wrpy --> blogUI
+    wrpy --> fbmd
+  end
+  jsl -.->|JSON lines| wrpy
+  db -.->|SQLite rows| wrpy
+  fbmd -.->|optional read| trd
+</pre>
+  </div>
+  <div id="flow-node-panel" class="flow-node-panel" hidden role="dialog" aria-labelledby="flow-node-panel-title">
+    <button type="button" class="flow-node-panel-close" id="flow-node-panel-close" aria-label="Close details">×</button>
+    <h3 id="flow-node-panel-title"></h3>
+    <p id="flow-node-panel-body"></p>
+    <p class="flow-node-meta" id="flow-node-panel-meta"></p>
+  </div>
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
+  const NODE_HELP = [
+    { re: /APScheduler|RTH gate|run_cycle/i, title: "Schedule", body: "Base cron four times per market day (10:00, 12:00, 14:00, 15:30 ET, Mon–Fri) with ±60s jitter. Optional SCHEDULE_EXTRA_ENABLE adds SCHEDULE_EXTRA_SLOTS. POSITION_HEALTH_INTERVAL_MIN (default 5 min, 0=off) runs run_position_health: session giveback halt + optional daily-loss emergency flatten, options hard stop (−50% default), trail giveback, profit ladder, expiry sweep, bracket fill sync, structured position_health JSONL. run_eod_summary runs at 16:05 ET Mon–Fri. is_us_equity_rth gates run_cycle to RTH. Each run_cycle calls get_market_regime once (cached), then get_watchlist(regime) and per-symbol get_market_snapshot(symbol, regime).", module: "trader/main.py" },
+    { re: /get_market_regime|regime\.py/i, title: "Regime pre-brain", body: "One Haiku JSON verdict per REGIME_TTL_SEC (default 15 min) over cross-asset inputs (SPY/QQQ indicator slices, VIX, macro, Kalshi, COT, Fear & Greed, QuiverQuant). Bearish conviction above REGIME_BEARISH_INJECT_THRESHOLD merges inverse/volatility tickers into the dynamic watchlist (skipped when TRADING_WATCHLIST static override is set). Same verdict is attached to every per-symbol snapshot as market_regime. REGIME_DISABLE skips the call.", module: "trader/regime.py" },
+    { re: /Alpaca Market Data|daily bars|IEX/i, title: "Alpaca market data", body: "Historical daily bars and live IEX snapshot for price, VWAP, volume, and previous close.", module: "trader/data_feed.py · trader/alpaca_runtime.py" },
+    { re: /Alpaca Trading API|screener/i, title: "Alpaca trading API", body: "Account equity, positions, day-trade count, and the screener client for the dynamic watchlist.", module: "trader/alpaca_runtime.py · trader/watchlist.py" },
+    { re: /Alpaca Options|ATM/i, title: "Alpaca options", body: "Nearest-expiry ATM ring with IV and mid for options-aware decisions.", module: "trader/options_exec.py" },
+    { re: /yfinance/i, title: "yfinance", body: "Earnings window hints per symbol (cached).", module: "trader/enrichment.py" },
+    { re: /RSS|Yahoo/i, title: "Headlines", body: "Yahoo Finance RSS per symbol (or static NEWS_RSS_URLS if set).", module: "trader/enrichment.py" },
+    { re: /FRED|DGS10/i, title: "FRED macro", body: "Treasury yields, curve, CPI YoY, unemployment when FRED_API_KEY is set.", module: "trader/macro.py" },
+    { re: /^VIX/i, title: "VIX", body: "Spot VIX level and a simple volatility regime label (calm/normal/elevated/stress) from recent closes.", module: "trader/macro.py" },
+    { re: /Fear.*Greed|CNN/i, title: "CNN Fear & Greed", body: "Equity sentiment index 0–100 (cached). Feeds the regime engine's early-warning leading signals.", module: "trader/sentiment.py · trader/data_feed.py" },
+    { re: /Finnhub/i, title: "Finnhub", body: "Global earnings calendar + per-symbol analyst recommendation when FINNHUB_API_KEY is set.", module: "trader/finnhub.py · trader/data_feed.py" },
+    { re: /profile\.py|TRADING_PROFILE|yolo_options/i, title: "Trading profile", body: "TRADING_PROFILE selects preset env bundles at startup: default (screener + stock/options + base-hit ladder) or yolo_options (static high-beta watchlist, options-only strategies, moonshot ladder, relaxed paper Tier-2). Unset env keys can still be overridden in api.env. Journal tags trading_profile on each row.", module: "trader/profile.py" },
+    { re: /watchlist/i, title: "Watchlist", body: "default: Alpaca most-actives (WATCHLIST_SCREENER_SIZE, default 20), anchors, bearish hedge from regime. yolo_options: TRADING_WATCHLIST static CSV, screener size 0. Held underlyings always appended — never truncated. TTL cache; quality filters optional.", module: "trader/watchlist.py" },
+    { re: /\/research|Research|eval_pack/i, title: "Research dashboard", body: "Offline replay: equity/drawdown charts, action/HALT counts, exit-reason attribution, paper promotion gate. GET /research on this UI. Not live trading.", module: "trader/research/eval_pack.py" },
+    { re: /get_market_snapshot|indicators\.py/i, title: "Snapshot builder", body: "120d daily IEX bars + custom TA + live IEX fields; portfolio_context and symbol_sector (yfinance); data_quality hints (missing_critical / optional / staleness); optional market_regime (cycle-level pre-brain verdict) when main passes regime into get_market_snapshot.", module: "trader/data_feed.py · trader/indicators.py · trader/data_quality.py · trader/sector.py" },
+    { re: /enrichment|macro.*options/i, title: "Enrichment layer", body: "Mutates the snapshot with earnings, news, macro, VIX, Fear & Greed, Finnhub analyst rec + earnings calendar, options ATM.", module: "trader/data_feed.py" },
+    { re: /market snapshot dict|cross-asset|enrichers.*data_quality/i, title: "Market snapshot", body: "Single dict passed to Claude: price, indicators, account, position, portfolio_context, data_quality, optional sector label, optional market_regime, and all enrichers.", module: "trader/data_feed.py" },
+    { re: /Trader|Haiku|JSON pitch/i, title: "Trader (Haiku)", body: "Directional momentum persona proposes one JSON trade per symbol; rules reference market_regime when present. Parse failures auto-retry twice (initial + reminder + final-strict mode); if all three retries fail, claude_brain returns a deterministic safe-HOLD shell (_parse_fallback=true) so a single bad response can't halt the cycle.", module: "trader/claude_brain.py" },
+    { re: /claude_brain|Haiku trader|JSON decision/i, title: "Brain (per cycle)", body: "Single Haiku call returns structured JSON; journal stores a compact debate block (trader + mode). Tier-2 policy checks that used to live in a second model (earnings, RSI+ADX, IV rank) are enforced in risk_engine.validate.", module: "trader/claude_brain.py" },
+    { re: /risk_engine|validate|conf/i, title: "Risk engine", body: "Tier-1 HALT/HOLD (loss, drawdown, bad orders, allowlist). Tier-2: confidence floor (optional VIX regime), cooldown, concurrency, PDT, optional MAX_SECTOR_NOTIONAL_PCT; RISK_SOFT_POLICY softens some Tier-2 blocks.", module: "trader/risk_engine.py" },
+    { re: /executor/i, title: "Executor", body: "Bracket GTC stock buys; simple DAY market sells to close (never with bracket fields); single-leg options. Option BUY qty = min(budget from size_pct, conviction_contract_cap from OPTIONS_SIZE_TIERS + MAX_OPTIONS_CONTRACTS_FLOOR/HARD). OPTIONS_REQUIRE_BID (default true) refuses BUYs when option bid<=0 or ask<=0, and refuses market SELLs when bid<=0.", module: "trader/executor.py · trader/options_exec.py" },
+    { re: /journal|logic_json|debate in/i, title: "Journal", body: "SQLite row + JSONL line with snapshot excerpt (incl. data_quality, market_regime, sector hints), raw/final decision, execute result, debate. JSONL rotates to journal.jsonl.YYYYMMDD-HHMMSS above JOURNAL_MAX_BYTES (default 100 MB); oldest beyond JOURNAL_KEEP_ROTATED (default 10) get pruned. Weekly reporter walks rotated siblings + live so the 7-day window always covers a rotation boundary.", module: "trader/journal.py" },
+    { re: /Alpaca paper|orders/i, title: "Broker", body: "Paper (or live) Alpaca account receiving orders.", module: "Alpaca API" },
+    { re: /SQLite|trades/i, title: "SQLite", body: "trades + risk_state + position_trail_state tables. All trader processes connect via trader/db.connect() which enables WAL mode + 15s busy_timeout so the read-only viewer can stay open while the bot commits — no 'database is locked' errors. Override with TRADING_DB_WAL / TRADING_DB_BUSY_TIMEOUT_MS.", module: "trader/db.py · data/logs/trades.db" },
+    { re: /JSONL/i, title: "JSONL log", body: "Append-only line log mirroring row metadata. Size-rotated by trader/journal.py when JOURNAL_MAX_BYTES is exceeded (default 100 MB); rotated siblings (journal.jsonl.YYYYMMDD-HHMMSS) live in the same directory and are pruned beyond JOURNAL_KEEP_ROTATED (default 10).", module: "data/logs/journal.jsonl" },
+    { re: /FastAPI viewer|this UI/i, title: "This UI", body: "Read-only FastAPI app for cycles, flow, positions.", module: "trader/web/app.py" },
+    { re: /Healthchecks/i, title: "Healthchecks.io", body: "End-of-cycle ping ok/fail for dead-man monitoring.", module: "trader/main.py" },
+    { re: /metrics\.jsonl|cycle_summary/i, title: "Metrics JSONL", body: "Optional TRADING_METRICS_JSONL_PATH appends one JSON object per run_cycle (action_counts, elapsed_sec, errors, failed_symbols, slowest_symbols_ms, compact market_regime).", module: "trader/main.py" },
+    { re: /cron Sun|weekly_review\.py|Sonnet plus stats/i, title: "Weekly review", body: "Cron (e.g. Sun) runs python -m trader.weekly_review: JSONL + SQLite stats + bot_operating_snapshot (resolved watchlist / option tiers / trail %) → Sonnet technical blog + human /blog post + TRADER_FEEDBACK.", module: "trader/weekly_review.py · trader/reporting/weekly_report.py" },
+    { re: /LATEST_EOD|eod-\d|eod.*YYYY/i, title: "EOD digest", body: "run_eod_summary fires at 16:05 ET Mon–Fri (no LLM). Aggregates today's journal rows and live Alpaca account equity, then writes LATEST_EOD.md and a dated eod-YYYY-MM-DD.md to data/reports/ for ad-hoc readers and the dashboard.", module: "trader/main.py · data/reports/" },
+    { re: /LATEST_REVIEW|data\/reports/i, title: "Weekly report file", body: "LATEST_REVIEW.md plus dated weekly-YYYY-MM-DD.md and JSON; GET /report/latest.md in log viewer.", module: "data/reports/" },
+    { re: /TRADER_FEEDBACK|brain context/i, title: "Trader feedback", body: "Short bullets extracted after weekly review; claude_brain prepends when fresh (TRADER_FEEDBACK_MAX_AGE_DAYS).", module: "trader/claude_brain.py" },
+    { re: /Dashboard \/blog|human-readable post/i, title: "Blog page", body: "Weekly human-readable post with SVG charts rendered at /blog and /blog/{slug} in this UI. Generated each weekly_review run alongside the technical review.", module: "trader/web/app.py · trader/reporting/blog_generator.py" },
+    { re: /External feeds|Per-cycle pipeline|Sinks/i, title: "Subgraph", body: "Logical grouping of feeds, pipeline stages, and sinks in this architecture view.", module: "—" },
+  ];
+
+  function labelText(node) {
+    const label = node.querySelector(".label");
+    if (!label) return "";
+    return (label.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function matchHelp(text) {
+    const t = text || "";
+    for (const row of NODE_HELP) {
+      if (row.re.test(t)) return row;
+    }
+    return {
+      title: "Pipeline node",
+      body: "Part of the trading bot architecture. See stage-by-stage notes below the diagram.",
+      module: "trader/",
+    };
+  }
+
+  mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+
+  const pre = document.getElementById("flow-mermaid-source");
+  const card = document.getElementById("flow-diagram-card");
+  const panel = document.getElementById("flow-node-panel");
+  const pt = document.getElementById("flow-node-panel-title");
+  const pb = document.getElementById("flow-node-panel-body");
+  const pm = document.getElementById("flow-node-panel-meta");
+  const closeBtn = document.getElementById("flow-node-panel-close");
+
+  function closePanel() {
+    panel.hidden = true;
+    closeBtn.blur();
+  }
+
+  function openPanel(text) {
+    const h = matchHelp(text);
+    pt.textContent = h.title;
+    pb.textContent = h.body;
+    pm.textContent = h.module ? `Module: ${h.module}` : "";
+    panel.hidden = false;
+  }
+
+  closeBtn.addEventListener("click", closePanel);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !panel.hidden) closePanel();
+  });
+
+  if (pre) {
+    await mermaid.run({ nodes: [pre] });
+    const svg = pre.querySelector("svg");
+    if (svg) {
+      svg.querySelectorAll("g.node").forEach((g) => {
+        g.setAttribute("tabindex", "0");
+        g.setAttribute("role", "button");
+        const txt = labelText(g);
+        g.setAttribute("aria-label", txt || "Diagram node");
+        const activate = () => openPanel(txt);
+        g.addEventListener("click", (e) => {
+          e.preventDefault();
+          activate();
+        });
+        g.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            activate();
+          }
+        });
+      });
+
+      const viewport = document.getElementById("flow-mermaid-viewport");
+      let scale = 1;
+      const clamp = (v) => Math.min(4, Math.max(0.25, v));
+      const applyZoom = () => {
+        scale = clamp(scale);
+        svg.style.transformOrigin = "top left";
+        svg.style.transform = `scale(${scale})`;
+        const rb = document.getElementById("flow-zoom-reset");
+        if (rb) rb.textContent = `${Math.round(scale * 100)}%`;
+      };
+      document.getElementById("flow-zoom-in")?.addEventListener("click", () => {
+        scale = clamp(scale * 1.15);
+        applyZoom();
+      });
+      document.getElementById("flow-zoom-out")?.addEventListener("click", () => {
+        scale = clamp(scale / 1.15);
+        applyZoom();
+      });
+      document.getElementById("flow-zoom-reset")?.addEventListener("click", () => {
+        scale = 1;
+        applyZoom();
+      });
+      viewport?.addEventListener(
+        "wheel",
+        (e) => {
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          scale = clamp(scale * (e.deltaY < 0 ? 1.1 : 0.9));
+          applyZoom();
+        },
+        { passive: false },
+      );
+      applyZoom();
+    }
+  }
+</script>
+
+<h2 style="margin:1.25rem 0 0.5rem; font-size:1.05rem;">Stage by stage</h2>
+<div class="stage-grid">
+  <div class="stage">
+    <h3><span class="step">1</span> Schedule</h3>
+    <p><code>main.py</code> uses APScheduler <strong>base cron</strong> at <strong>10:00, 12:00, 14:00, and 15:30 ET</strong> (Mon–Fri), <strong>±60 s jitter</strong>. Set <code>SCHEDULE_EXTRA_ENABLE</code> to add more ET times from <code>SCHEDULE_EXTRA_SLOTS</code> (default <code>11:30,13:30</code>). <code>is_us_equity_rth</code> gates <code>run_cycle</code> to NYSE Mon–Fri 09:30–16:00 ET, minus a built-in holiday list (and <code>NYSE_HOLIDAYS</code>). Each finished cycle logs <code>cycle_summary</code> JSON (includes compact <code>market_regime</code>); optional <code>TRADING_METRICS_JSONL_PATH</code> appends the same payload to a file.</p>
+    <p><strong>Position health</strong> — <code>POSITION_HEALTH_INTERVAL_MIN</code> (default <strong>5 min</strong>; set to <code>0</code> to disable) runs <code>run_position_health</code> during RTH. It logs all open positions <em>and</em> fires rule-based <strong>trail giveback exits</strong>: if unrealized P&amp;L has given back more than <code>TRAIL_GIVEBACK_PCT</code> (default <strong>40 %</strong>) of the tracked peak (multi-day unless <code>TRAIL_RESET_DAILY</code>), it executes a SELL via <code>executor.execute</code> — no LLM. State is persisted in the <code>position_trail_state</code> SQLite table. The same job runs <strong>expiry sweep</strong> and <strong>profit-ladder</strong> partial closes on options. Whenever one of those paths places an order, the bot also writes a <strong>normal <code>trades</code> / JSONL journal row</strong> (same shape as scan-cycle rows): rationale ends with <code>_automation</code> and <code>logic_json.automated_exit.kind</code> is <code>trail_giveback</code>, <code>profit_ladder</code>, or <code>expiry_sweep</code>, so weekly review and greps can tell a programmed take-profit / risk exit from a model-driven SELL. Separately, <strong>GTC stock bracket</strong> take-profit (limit) and stop-loss (stop) legs fill at Alpaca with their own order IDs; each health tick calls <code>sync_bracket_exit_fills</code> to poll recent closed SELLs and append the same journal shape when <code>order_id</code> is not already in <code>trades</code> (<code>bracket_take_profit</code> / <code>bracket_stop</code>; disable with <code>BRACKET_FILL_SYNC_DISABLE</code>).</p>
+    <p><strong>EOD summary</strong> — <code>run_eod_summary</code> runs at <strong>16:05 ET</strong> (Mon–Fri, ±30 s). No LLM. Queries today's journal rows and live Alpaca account, then writes <code>data/reports/LATEST_EOD.md</code> and a dated <code>eod-YYYY-MM-DD.md</code> for the dashboard and any ad-hoc reader.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">2</span> Watchlist</h3>
+    <p><code>watchlist.py</code> calls Alpaca's screener for <strong>most-actives by volume</strong>, keeps the top <code>WATCHLIST_SCREENER_SIZE</code> symbols after quality filters (default <strong>20</strong>; legacy <code>WATCHLIST_SIZE</code> applies when <code>WATCHLIST_SCREENER_SIZE</code> is unset), prepends regime anchors (<code>SPY,QQQ</code>), optionally merges <strong>bearish hedge tickers</strong> from <code>get_market_regime()</code> when conviction ≥ <code>REGIME_BEARISH_INJECT_THRESHOLD</code> (skipped when <code>TRADING_WATCHLIST</code> static override is set), then appends every open-position underlying when <code>WATCHLIST_INCLUDE_OPEN_POSITIONS=true</code> (default) — <strong>held names are never capped or dropped for space</strong>. TTL-cached for <code>WATCHLIST_TTL_SEC</code> with a cache key that includes the regime fingerprint. <code>WATCHLIST_DISABLE</code> falls back to anchors only; <code>TRADING_WATCHLIST</code> static override wins. Optional post-filters: <code>WATCHLIST_DENY_SYMBOLS</code> / <code>WATCHLIST_DENY_PREFIXES</code>, <code>WATCHLIST_MAX_SPREAD_PCT</code>, <code>WATCHLIST_MIN_MARKET_CAP</code> / <code>WATCHLIST_MIN_AVG_DOLLAR_VOL</code> (yfinance, cached). <strong><code>WATCHLIST_ENFORCE_MIN_PRICE</code> defaults to <code>true</code></strong> and drops symbols whose Alpaca last trade is below <code>WATCHLIST_MIN_PRICE</code> (default <strong>$5</strong>) — keeps the brain off penny stocks where ATR exceeds price and bracket orders cannot be priced. Set <code>WATCHLIST_ENFORCE_MIN_PRICE=false</code> to opt back in.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">3</span> Snapshot</h3>
+    <p><code>data_feed.get_market_snapshot</code> loads about <strong>120 trading days</strong> of <strong>daily</strong> OHLCV from Alpaca (<strong>IEX</strong>), runs <code>indicators.add_indicators</code> (pure pandas math — not pandas-ta), then folds in the Alpaca <strong>stock snapshot</strong> when available: latest trade (or minute/daily bar) for live <code>price</code>, daily bar <strong>VWAP</strong> and <strong>volume</strong>, and <strong>previous close</strong> for <code>change_pct</code>.</p>
+    <p><strong>Per-symbol technicals</strong> exposed under <code>indicators</code> (last bar, rounded for the model):</p>
+    <ul class="compact">
+      <li><code>rsi_14</code> — 14-period RSI-style oscillator (smoothed average gain vs loss on closes).</li>
+      <li><code>macd</code> / <code>macd_signal</code> — MACD line (EMA12 − EMA26) and 9-period signal EMA of that line.</li>
+      <li><code>ema_20</code> / <code>ema_50</code> — Close EMAs for short vs medium trend.</li>
+      <li><code>atr_14</code> — Average True Range (14), used downstream for bracket distances and volatility context.</li>
+      <li><code>adx_14</code> — Trend strength 0–100-ish (weak trend vs strong).</li>
+      <li><code>stoch_rsi_k</code> / <code>stoch_rsi_d</code> — Stochastic RSI (14) and a 3-bar SMA of <code>k</code> (momentum within RSI range).</li>
+      <li><code>obv</code> — On-balance volume cumulative series (directional volume pressure).</li>
+      <li><code>bb_upper</code> / <code>bb_lower</code> — Bollinger bands, 20-day SMA ± 2σ on closes.</li>
+      <li><code>volume_ratio</code> — Today’s volume vs a 20-day volume moving average (relative participation).</li>
+      <li><code>vwap</code>, <code>volume</code>, <code>prev_close</code>, <code>change_pct</code>, <code>daily_bar_close</code> — session / prior-day context from the snapshot pipeline.</li>
+    </ul>
+    <p><strong>Account &amp; position</strong> (Alpaca trading API, same dict): <code>account.equity</code>, <code>cash</code>, <code>daily_pnl</code> (vs <code>last_equity</code>), <code>open_positions</code>, <code>daytrade_count</code>, <code>pattern_day_trader</code>. <code>position</code> is either <code>held: false</code> or held with <code>qty</code>, <code>avg_entry</code>, <code>unrealized_pnl</code> / <code>unrealized_pct</code>, <code>market_value</code>, <code>current_price</code>. <strong><code>portfolio_context</code></strong> lists all open positions; when sector lookup is on, <code>sector_notional_pct</code> summarizes exposure by sector. <strong><code>market_regime</code></strong> (when present) repeats the cycle-level pre-brain verdict: <code>direction</code>, <code>conviction</code>, <code>rationale</code> — identical on every symbol row in that scan. <strong><code>data_quality</code></strong> flags missing critical fields vs optional enrichers; <strong><code>symbol_sector</code></strong> labels the scanned equity (yfinance). <code>SECTOR_LOOKUP_DISABLE=true</code> skips sector fetches.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">4</span> Enrich</h3>
+    <p>Everything below is <strong>best-effort</strong>: TTL caches, graceful omission if a key is missing or an env disables a layer (<code>MACRO_DISABLE</code>, <code>ENRICHMENT_DISABLE</code>, <code>OPTIONS_SNAPSHOT_DISABLE</code>, etc.).</p>
+    <ul class="compact">
+      <li><strong>Earnings &amp; headlines</strong> — <code>yfinance</code> → <code>earnings_days_away</code>, <code>next_earnings_date</code>. RSS bundle → filtered <code>news_headlines</code> (and optional <code>news_feed_errors</code>); <code>news_sentiment</code> is <code>see_headlines</code> when titles exist.</li>
+      <li><strong>FRED macro</strong> (needs <code>FRED_API_KEY</code>) → <code>macro</code>: <code>dgs10</code>, <code>dgs2</code>, <code>t10y2y</code> (10y−2y spread), <code>unrate</code>, <code>cpi_yoy</code>.</li>
+      <li><strong>VIX</strong> — <code>vix.level</code>, <code>change_pct</code>, <code>regime</code> (<code>calm</code> / <code>normal</code> / <code>elevated</code> / <code>stress</code>) from recent <code>^VIX</code> closes.</li>
+      <li><strong>CNN Fear &amp; Greed</strong> — <code>fear_greed.score</code>, <code>rating</code>, prior close / 1w reference fields when returned. Feeds the regime engine's early-warning signals.</li>
+      <li><strong>Finnhub</strong> (API key) — <code>earnings_calendar</code> (global) and <code>analyst_recommendation</code> (per symbol) when each call succeeds.</li>
+      <li><strong>Options</strong> — <code>options</code>: nearest listed expiry, <code>atm_strike</code>, <code>atm.call</code> / <code>atm.put</code> with <code>iv</code>, <code>mid</code>, <code>bid</code>, <code>ask</code> when chain data exists; <code>strikes_ring</code> repeats that for ATM ± configured strikes.</li>
+    </ul>
+    <p>The merged object is what the brain and <code>risk_engine</code> see; the journal’s <code>logic_json</code> excerpt keeps the same high-signal keys for audit (including <code>market_regime</code> when present).</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">5</span> Brain</h3>
+    <p><code>claude_brain.get_decision</code> runs a <strong>single Haiku</strong> call (<code>BRAIN_TRADER_MODEL</code>) and returns structured JSON. The system prompt is <strong>directional momentum</strong> (bullish and bearish playbooks; uses <code>market_regime</code> when the snapshot includes it). The journal stores <code>debate</code> with <code>mode</code> (e.g. <code>single_trader_haiku</code>) and the raw <code>trader</code> pitch. Deterministic gates that previously justified a second model — earnings proximity, RSI extreme without ADX trend, IV-rank size haircut — now live in <code>risk_engine.validate</code>.</p>
+    <p><strong>Parse robustness:</strong> when Claude returns prose without a JSON object, <code>_call_and_parse</code> retries up to twice (reminder, then final-strict mode with bumped <code>max_tokens</code>) before raising a typed <code>_ModelParseError</code>. <code>get_decision</code> converts that into a deterministic safe-HOLD shell (<code>_parse_fallback=true</code>) so one symbol's flaky response can never halt the rest of the cycle. Logs <code>WARNING trader_parse_fallback</code> with a 240-char snippet for ops visibility.</p>
+    <p>Both personas get the same snapshot JSON; the system prompt spells out how to use it — e.g. require <strong>price + indicator alignment</strong> on the underlying before <code>BUY</code>/<code>SELL</code>, align with <strong><code>market_regime</code></strong> when present, <strong>force <code>HOLD</code> when <code>data_quality.missing_critical</code> is non-empty</strong>, treat macro/VIX/Fear &amp; Greed/Finnhub/options as <strong>supporting context</strong> only, respect <code>earnings_days_away</code> for event risk, and prefer options vs stock when ADX/StochRSI line up and <code>vix.regime</code> is calm/normal. <code>risk_engine</code> still enforces tier-1 kill-switches and tier-2 policy (see step 6).</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">6</span> Risk</h3>
+    <p><code>risk_engine.validate</code> runs <strong>after</strong> the brain. <strong>Tier 1</strong> (always on): invalid equity; daily loss and peak drawdown <code>HALT</code>; broken options fields; symbol/strategy allowlists. <strong>Tier 2</strong>: confidence floor (default <code>MIN_CONFIDENCE</code>); optional <code>RISK_VIX_REGIME_CONFIDENCE=true</code> raises/lowers that floor by <code>vix.regime</code>; optional <code>RISK_VIX_REGIME_COOLDOWN=true</code> scales post-SELL cooldown via <code>COOLDOWN_MULT_*</code>; concurrent BUY cap; Alpaca <code>daytrade_count</code> vs <code>PDT_DAYTRADE_CEILING</code> when equity &lt; <code>PDT_EQUITY_FLOOR</code>; <code>size_pct</code> clamp to <code>MAX_POSITION_PCT</code>; sector caps (<code>MAX_SECTOR_NOTIONAL_PCT</code> and <code>MAX_UNKNOWN_SECTOR_PCT</code>); earnings blackout; RSI+ADX chop filter; IV-rank half-size; minimum option DTE; overnight hold on discretionary SELL unless <code>risk_exit_kind</code> is an automation bypass; intraday giveback halt for new BUYs after a large session peak fades.</p>
+    <p><strong><code>MAX_ADD_TO_POSITION</code></strong> (default off) — a BUY on an already-held <code>long_stock</code> symbol is forced HOLD unless this env is <code>true</code>.</p>
+    <p><strong><code>OPTIONS_MIN_HOLD_HOURS</code></strong> (default <strong>0.5 h</strong>) — evaluated before overnight hold: SELL on <code>long_call</code> / <code>long_put</code> is blocked until the position has been held this long. Bypass: if <code>unrealized_pct ≥ PROFIT_LOCK_PCT</code> (default <strong>20 %</strong>), min-hold and same-day overnight hold for options are waived and a <code>risk_warnings</code> note is logged.</p>
+    <p><code>RISK_SOFT_POLICY=true</code> turns some Tier-2 blocks into <code>risk_warnings</code> only (still logs) — use for paper experiments, not as a substitute for capital limits.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">7</span> Execute</h3>
+    <p>Only <code>BUY</code>/<code>SELL</code> reach <code>executor.execute</code>. Stock buys go out as <strong>GTC bracket orders</strong> with stops/take-profits ATR-clamped (<code>ATR_MULTIPLIER_STOP/TP</code>); when the ATR floor would produce a non-positive stop (sub-dollar names like EZGO where <code>ref - ATR &lt; 0</code>), <code>_clamp_bracket_prices</code> returns <code>None</code> and the caller skips with <code>atr_clamp_infeasible_stop_tp</code> rather than letting a negative stop reach Alpaca. Stock sells are simple DAY market exits — never with <code>stop_loss</code> / <code>take_profit</code> fields attached. Long calls/puts: contract count is <code>min(budget from size_pct, conviction_contract_cap(confidence))</code> where the cap comes from <code>OPTIONS_SIZE_TIERS</code> (default <code>0.70:2,0.78:3</code>), clamped by <code>MAX_OPTIONS_CONTRACTS_HARD</code>, with <code>MAX_OPTIONS_CONTRACTS</code> as the floor when below all tiers or tiers disabled. <code>logic_json.execute</code> records <code>option_qty</code> and <code>conviction_contract_cap</code> on fills.</p>
+    <p><strong>Option liquidity gate</strong> (<code>OPTIONS_REQUIRE_BID=true</code> default): before submitting either side of a long_call/long_put, <code>options_exec.fetch_option_bid_ask</code> is consulted. <strong>BUY</strong> requires <code>bid &gt; 0</code> AND <code>ask &gt; 0</code> (rejection: <code>option_no_bid_at_buy</code>) — prevents opening dormant contracts that have an ask but no buyer (FNDX-class). <strong>SELL</strong> requires <code>bid &gt; 0</code> (rejection: <code>option_no_bid_for_market_sell</code>) — avoids the wasted Alpaca round-trip and the <code>40310000</code> error-spam loop; position remains open and retries naturally when a real bid reappears.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">8</span> Journal &amp; ping</h3>
+    <p><code>journal.write_journal_entry</code> bundles snapshot excerpt (including <code>data_quality</code>, <code>market_regime</code>, and sector hints) + raw decision + final decision + execute result into <code>logic_json</code> and writes one row to SQLite (<code>trades</code>) plus one line to the JSONL log. All connections go through <code>trader/db.connect()</code>, which enables <strong>WAL</strong> mode and a 15 s <code>busy_timeout</code> so this viewer can keep reading while the bot commits (override with <code>TRADING_DB_WAL</code> / <code>TRADING_DB_BUSY_TIMEOUT_MS</code>).</p>
+    <p><strong>Size-based rotation:</strong> before each append, <code>_maybe_rotate_journal</code> renames <code>journal.jsonl</code> to <code>journal.jsonl.YYYYMMDD-HHMMSS</code> once it exceeds <code>JOURNAL_MAX_BYTES</code> (default <strong>100 MB</strong>) and prunes oldest rotated siblings beyond <code>JOURNAL_KEEP_ROTATED</code> (default <strong>10</strong>). Set <code>JOURNAL_MAX_BYTES=0</code> to disable. The weekly reporter's <code>load_jsonl_since</code> walks rotated siblings alongside the live file (mtime-ordered, oldest first), so the 7-day review window always spans rotations.</p>
+    <p>After all symbols, <code>main</code> logs <code>cycle_summary</code> with <code>action_counts</code>, <code>elapsed_sec</code>, <code>cycle_errors</code>, <code>failed_symbols</code>, <code>slowest_symbols_ms</code> (top-5 per-symbol elapsed time — surfaces a hung enrichment source after the fact), and a compact <code>market_regime</code> block. Same payload appended to <code>TRADING_METRICS_JSONL_PATH</code> when set. <code>main.ping_healthcheck</code> pings <code>HEALTHCHECK_URL</code> (or its <code>/fail</code> sibling) at the end of each cycle.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">9</span> Viewer</h3>
+    <p>This FastAPI app (<code>trader/web/app.py</code>) is read-only. It reads SQLite for cycles/<code>logic_json</code> (<code>/</code>, <code>/cycle/:id</code>), Alpaca live for <code>/positions</code>, and the latest weekly blog at <code>/report/latest.md</code> (Markdown). Token-gated by <code>TRADE_LOG_VIEW_TOKEN</code>.</p>
+  </div>
+  <div class="stage">
+    <h3><span class="step">10</span> Weekly report and blog</h3>
+    <p><strong>Cron</strong> (e.g. Sunday, see <code>docs/TRADING_BOT.md</code>) runs <code>python -m trader.weekly_review</code>. That loads the last 7 days of <code>journal.jsonl</code> plus SQLite aggregates (and optional <code>WEEKLY_HUMAN_JOURNAL_PATH</code> / Alpaca closed orders when enabled), attaches a <code>bot_operating_snapshot</code> (resolved watchlist screener size, option tier caps, trail giveback %) so the reviewer interprets multi-contract option rows correctly, calls <strong>Sonnet</strong>, and writes under <code>data/reports/</code>: dated <code>weekly-YYYY-MM-DD.md</code>, <code>LATEST_REVIEW.md</code> (stable path for automation / <code>GET /report/latest.md</code>), <code>TRADER_FEEDBACK.md</code> (short bullets the brain may read next week), and a small JSON sidecar.</p>
+    <p>The same run also writes a <strong>human-readable blog post</strong> with SVG charts to <code>data/reports/blog-YYYY-MM-DD.md</code> + <code>.charts.json</code>. The dashboard surfaces it at <a href="/blog?token={{ query_token | urlencode }}"><code>/blog</code></a> and <code>/blog/{slug}</code> — that is the only delivery channel; nothing posts externally on its own.</p>
+  </div>
+</div>
+
+<div class="rules-card">
+  <h3>Hard rules baked into <code>risk_engine.validate</code></h3>
+  <ul>
+    <li>Confidence floor: <code>MIN_CONFIDENCE</code> (default <strong>0.65</strong>) — below ⇒ <code>HOLD</code>.</li>
+    <li>Position cap: <code>MAX_POSITION_PCT</code> (default <strong>5%</strong> of equity) — clamped, not rejected.</li>
+    <li>Daily loss circuit breaker: <code>MAX_DAILY_LOSS_PCT</code> (default <strong>2%</strong>) ⇒ <code>HALT</code>.</li>
+    <li>Drawdown from peak: <code>MAX_DRAWDOWN_FROM_PEAK_PCT</code> (default <strong>15%</strong>) ⇒ <code>HALT</code>; peak tracked in <code>risk_state</code>.</li>
+    <li>Symbol cooldown: <code>SYMBOL_COOLDOWN_HOURS</code> (default <strong>24h</strong>) since the last journaled <code>SELL</code> ⇒ <code>HOLD</code>.</li>
+    <li>Concurrency: <code>MAX_CONCURRENT_BUYS</code> (default <strong>1</strong>) — no new <code>BUY</code> when at cap.</li>
+    <li>Add-to-position: <code>MAX_ADD_TO_POSITION</code> (default <strong>false</strong>) — second <code>BUY</code> on an already-held <code>long_stock</code> ⇒ <code>HOLD</code> unless set to <code>true</code>.</li>
+    <li>Options min hold: <code>OPTIONS_MIN_HOLD_HOURS</code> (default <strong>0.5h</strong>) — SELL on open option before hold period ⇒ <code>HOLD</code>; bypass when <code>unrealized_pct ≥ PROFIT_LOCK_PCT</code> (default <strong>20%</strong>).</li>
+    <li>Strategy allowlist: <code>long_stock</code>, <code>long_call</code>, <code>long_put</code>, <code>csp</code>, <code>vertical_spread</code>.</li>
+    <li>Symbol universe: the current cycle's watchlist (held underlyings auto-injected via <code>WATCHLIST_INCLUDE_OPEN_POSITIONS</code> so the bot can always SELL what it owns).</li>
+    <li>PDT: Alpaca <code>daytrade_count</code> ≥ <code>PDT_DAYTRADE_CEILING</code> with equity &lt; <code>PDT_EQUITY_FLOOR</code> ⇒ new <code>BUY</code> ⇒ <code>HOLD</code> (<code>pdt_ceiling</code>).</li>
+    <li>Sector cap: <code>MAX_SECTOR_NOTIONAL_PCT</code> &gt; <code>0</code> — block <code>BUY</code> if existing + new <code>size_pct</code> in the same sector would exceed the cap (uses snapshot sector fields).</li>
+  </ul>
+</div>
+{% endblock %}

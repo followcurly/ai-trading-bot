@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block body %}
+<p><a href="/?token={{ query_token | urlencode }}">← All cycles</a></p>
+<h1>Cycle {{ row.id }}</h1>
+<p class="muted"><span title="{{ row.timestamp }}">{{ row.timestamp | human_timestamp }}</span> · {{ row.symbol }} · <strong>{{ row.action }}</strong> · {{ row.strategy or "" }}</p>
+
+{% if exec_status == 'error' %}
+<div style="background:var(--chip-sell-bg);color:var(--chip-sell);border:1px solid var(--chip-sell);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;">
+  <strong>Order NOT placed — Alpaca returned an error</strong><br/>
+  <code>{{ exec_error or "no detail recorded" }}</code>
+</div>
+{% elif exec_status == 'placed' %}
+<div style="background:var(--chip-buy-bg);color:var(--chip-buy);border:1px solid var(--chip-buy);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;">
+  <strong>Order placed</strong> — Alpaca order ID: <code>{{ exec_order_id or "—" }}</code>
+</div>
+{% elif exec_status == 'skipped' %}
+<div style="background:var(--chip-hold-bg);color:var(--chip-hold);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;">
+  <strong>Executor skipped</strong>{% if exec_error %} — <code>{{ exec_error }}</code>{% endif %}
+</div>
+{% endif %}
+
+{% if market_regime %}
+<div class="card" style="margin-bottom:1rem;">
+  <div class="muted" style="font-size:0.8rem;">Cross-asset regime (this scan)</div>
+  <div style="margin-top:0.35rem;">
+    <span class="chip {% if (market_regime.direction or '')|lower == 'bearish' %}chip-sell{% elif (market_regime.direction or '')|lower == 'bullish' %}chip-buy{% else %}chip-hold{% endif %}">{{ (market_regime.direction or "—")|upper }}</span>
+    {% if market_regime.conviction is not none %}
+    <span class="muted" style="margin-left:0.5rem;">conviction {{ "%.2f"|format(market_regime.conviction|float) }}</span>
+    {% endif %}
+  </div>
+  {% if market_regime.rationale %}
+  <p class="muted" style="margin:0.5rem 0 0;font-size:0.85rem;line-height:1.45;">{{ market_regime.rationale }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if pipeline and pipeline.stages %}
+<h2 style="font-size:1rem;margin-top:0.5rem;">Decision pipeline</h2>
+<div class="strip" style="align-items:flex-start;margin-bottom:1.25rem;">
+  {% for s in pipeline.stages %}
+    {% if not loop.first %}
+    <svg width="22" height="32" viewBox="0 0 22 32" aria-hidden="true" style="flex-shrink:0;color:var(--muted);margin-top:6px;">
+      <path d="M2 16 L16 16 M12 10 L18 16 L12 22" stroke="currentColor" stroke-width="2" fill="none"/>
+    </svg>
+    {% endif %}
+    <div class="card" style="max-width:min(240px,100%);">
+      <div class="muted" style="font-size:0.75rem;">{{ s.title }}</div>
+      <div style="margin-top:0.25rem;"><span class="chip chip-{{ s.chip }}">{{ s.state }}</span></div>
+      <div style="font-size:0.82rem;margin-top:0.35rem;word-break:break-word;">{{ s.detail }}</div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin:1rem 0;">
+  <div class="card">
+    <div class="muted">Model confidence</div>
+    <div>{% if model_confidence is not none %}{{ model_confidence }}{% else %}—{% endif %}</div>
+  </div>
+  <div class="card">
+    <div class="muted">Post-risk reason</div>
+    <div>{{ post_reason or "—" }}</div>
+  </div>
+  <div class="card">
+    <div class="muted">Execute status</div>
+    <div>
+      {% if exec_status %}
+      <span class="chip chip-{{ exec_status }}">{{ exec_status }}</span>
+      {% else %}—{% endif %}
+    </div>
+  </div>
+  {% if exec_order_id %}
+  <div class="card">
+    <div class="muted">Alpaca order ID</div>
+    <div><code>{{ exec_order_id }}</code></div>
+  </div>
+  {% endif %}
+</div>
+
+<p>
+  <strong>Rationale:</strong> {{ display_rationale or row.rationale or "—" }}
+  {% if display_rationale and row.rationale and display_rationale != row.rationale %}
+  <br/><span class="muted" style="font-size:0.8rem;">tag: <code>{{ row.rationale }}</code></span>
+  {% endif %}
+</p>
+<p><strong>Equity:</strong> {{ row.equity }} · <strong>Daily P&amp;L:</strong> {{ row.daily_pnl }}</p>
+
+<h2>Pipeline (logic_json)</h2>
+{% if logic_pretty %}
+<details>
+  <summary>Snapshot excerpt</summary>
+  {% if snapshot_excerpt_pretty %}
+  <pre>{{ snapshot_excerpt_pretty }}</pre>
+  {% else %}
+  <p class="muted">—</p>
+  {% endif %}
+</details>
+<details>
+  <summary>Raw Claude decision</summary>
+  {% if raw_decision_pretty %}
+  <pre>{{ raw_decision_pretty }}</pre>
+  {% else %}
+  <p class="muted">—</p>
+  {% endif %}
+</details>
+<details>
+  <summary>Final decision (after risk)</summary>
+  {% if final_decision_pretty %}
+  <pre>{{ final_decision_pretty }}</pre>
+  {% else %}
+  <p class="muted">—</p>
+  {% endif %}
+</details>
+<details {% if exec_status == 'error' %}open{% endif %}>
+  <summary>Execute{% if exec_status == 'error' %} ⚠ ERROR{% endif %}</summary>
+  {% if execute_pretty %}
+  <pre>{{ execute_pretty }}</pre>
+  {% else %}
+  <p class="muted">—</p>
+  {% endif %}
+</details>
+<details>
+  <summary>Full payload (JSON)</summary>
+  <pre>{{ logic_pretty }}</pre>
+</details>
+{% else %}
+<p class="muted">No logic payload (legacy row before logic_json).</p>
+{% endif %}
+{% endblock %}
