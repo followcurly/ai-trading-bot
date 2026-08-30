@@ -21,10 +21,10 @@ If you are here to **follow along**, watch the commits, read the public site, an
 
 **What you will see on the site**
 
-- **`/`** — why v1 failed and what v2 is testing  
+- **`/`** — why v1 failed, what v2 is testing, and the scoreboard vs an S&P hold  
 - **`/flow`** — pan/zoom Mermaid: schedule → red check → sleeve weight → buy/hold → journal  
 - **`/architecture`** — redacted deep dive of the simplified stack  
-- **`/research`** — method: backtest simple scenarios against real paper capital before expanding  
+- **`/research`** — method: v1 receipts, v2 loop, live paper vs S&P, backtests before expanding  
 
 ---
 

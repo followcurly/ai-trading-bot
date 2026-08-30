@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" role="img" aria-label="v2 paper vs S&P hold">
+  <rect width="100%" height="100%" fill="#fafafa"/>
+  <text x="56" y="18" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="#18181b">v2 paper vs S&amp;P hold</text>
+  <text x="704" y="18" text-anchor="end" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#71717a">$84.2k start → paper $85.2k (+1.2%) · SPY +3.0%</text>
+  <line x1="56" y1="44.0" x2="704" y2="44.0" stroke="#e4e4e7" stroke-width="1"/><text x="8" y="47.0" font-size="10" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">$88.0k</text><line x1="56" y1="168.0" x2="704" y2="168.0" stroke="#e4e4e7" stroke-width="1"/><text x="8" y="171.0" font-size="10" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">$85.9k</text><line x1="56" y1="292.0" x2="704" y2="292.0" stroke="#e4e4e7" stroke-width="1"/><text x="8" y="295.0" font-size="10" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">$83.9k</text>
+  <line x1="56" y1="274.9" x2="704" y2="274.9" stroke="#a1a1aa" stroke-dasharray="4 4" stroke-width="1"/>
+  <text x="704" y="270.9" text-anchor="end" font-size="10" fill="#71717a" font-family="ui-sans-serif,system-ui,sans-serif">$84.2k start</text>
+  <rect x="56" y="26" width="10" height="10" rx="2" fill="#059669"/><text x="70" y="35" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">Paper book</text><rect x="160" y="26" width="10" height="10" rx="2" fill="#71717a"/><text x="174" y="35" font-size="11" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">SPY buy &amp; hold</text>
+  <polyline points="56.0,267.3 90.1,257.1 124.2,241.9 158.3,245.9 192.4,251.5 226.5,231.2 260.6,224.4 294.7,228.0 328.8,185.5 362.9,191.2 397.1,208.5 431.2,231.2 465.3,210.7 499.4,248.6 533.5,239.1 567.6,253.3 601.7,238.1 635.8,227.7 669.9,207.1 704.0,214.6" fill="none" stroke="#059669" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><polyline points="56.0,274.9 90.1,199.6 124.2,107.4 158.3,116.5 192.4,124.4 226.5,93.3 260.6,94.3 294.7,111.5 328.8,61.1 362.9,71.7 397.1,97.0 431.2,133.2 465.3,121.4 499.4,165.9 533.5,145.1 567.6,160.1 601.7,144.1 635.8,143.0 669.9,107.0 704.0,120.0" fill="none" stroke="#71717a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="56" y="308" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">Jul 31</text>
+  <text x="704" y="308" text-anchor="end" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">Aug 28 · 2026</text>
+</svg>

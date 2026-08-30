@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220" role="img" aria-label="Red-day versus S and P hold">
+  <rect width="100%" height="100%" fill="#fafafa"/>
+  <text x="24" y="28" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700" fill="#18181b">Red-day vs just holding the S&amp;P</text>
+  <text x="430" y="28" font-size="11" font-weight="700" fill="#059669" font-family="ui-sans-serif,system-ui,sans-serif">Red-day</text>
+  <text x="540" y="28" font-size="11" font-weight="700" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">S&amp;P hold</text>
+  <text x="24" y="64" font-size="12" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">Live paper (4 weeks)</text>
+  <text x="430" y="64" font-size="13" font-weight="700" fill="#b45309" font-family="ui-sans-serif,system-ui,sans-serif">+1.2%</text>
+  <text x="540" y="64" font-size="13" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">+3.0%</text>
+  <text x="24" y="100" font-size="12" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">1-year backtest</text>
+  <text x="430" y="100" font-size="13" font-weight="700" fill="#b45309" font-family="ui-sans-serif,system-ui,sans-serif">+22.3%</text>
+  <text x="540" y="100" font-size="13" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">+37.8%</text>
+  <text x="24" y="136" font-size="12" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">3-year backtest</text>
+  <text x="430" y="136" font-size="13" font-weight="700" fill="#b45309" font-family="ui-sans-serif,system-ui,sans-serif">+67.5%</text>
+  <text x="540" y="136" font-size="13" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">+71.3%</text>
+  <text x="24" y="172" font-size="12" fill="#3f3f46" font-family="ui-sans-serif,system-ui,sans-serif">~6-year backtest (incl. 2022)</text>
+  <text x="430" y="172" font-size="13" font-weight="700" fill="#059669" font-family="ui-sans-serif,system-ui,sans-serif">+143.5%</text>
+  <text x="540" y="172" font-size="13" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">+130.5%</text>
+  <text x="24" y="208" font-size="11" fill="#52525b" font-family="ui-sans-serif,system-ui,sans-serif">Live from the leftover $84.2k book. Backtests start at $100k. Not advice.</text>
+</svg>

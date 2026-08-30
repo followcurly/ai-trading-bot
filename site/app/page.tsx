@@ -28,8 +28,16 @@ const chapters = [
     accent: "border-emerald-500/30",
   },
   {
-    href: "/research",
+    href: "/research#i-checked-the-scoreboard",
     step: "04",
+    title: "I checked the scoreboard",
+    body: "+1.2% paper in four weeks. S&P hold +3.0%. Still the bar.",
+    visual: "/research-examples/v2-vs-spy-score.svg",
+    accent: "border-teal-500/30",
+  },
+  {
+    href: "/research#where-i-hope-to-go",
+    step: "05",
     title: "I hope to learn",
     body: "Evolve rules on paper fitness — then earn LLM back.",
     visual: "/research-examples/v-future-evolve.svg",
@@ -39,6 +47,7 @@ const chapters = [
 
 const measures = [
   "Paper equity from the ~$84k v2 line",
+  "Same-dollar S&P hold (day-one SPY)",
   "Drawdown from peak",
   "Buys vs the one-per-sleeve rule",
   "Sleeve weights (50 / 25 / 25)",
@@ -66,8 +75,9 @@ export default function Home() {
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-zinc-700 dark:text-zinc-300">
               I built a complex LLM options bot, lost −15.8% on paper, and kept the same book. Now I
-              buy quality ETFs on red days and hold. I measure a few hard numbers. I hope to evolve
-              better rules — and learn the LLM piece again as I iterate.
+              buy quality ETFs on red days and hold. Four weeks in I am +1.2% — and still behind a
+              same-dollar S&amp;P hold. I hope to evolve better rules — and learn the LLM piece again
+              as I iterate.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -92,7 +102,7 @@ export default function Home() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/research-examples/story-arc.svg"
-              alt="Story arc: tried, built, ended, now, next, hope"
+              alt="Story arc: tried, built, ended, now, scoreboard, next, hope"
               className="h-auto w-full rounded-2xl border border-zinc-200 dark:border-zinc-800"
               loading="eager"
             />

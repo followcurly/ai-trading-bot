@@ -9,7 +9,7 @@ import { SiteNav } from "@/components/SiteNav";
 export const metadata: Metadata = {
   title: "Method",
   description:
-    "My first-person paper lab notebook: what I tried, where I ended up, what I measure next.",
+    "My first-person paper lab notebook: what I tried, where I ended up, the scoreboard vs an S&P hold.",
 };
 
 export default function ResearchPage() {
@@ -18,7 +18,7 @@ export default function ResearchPage() {
     <div className="relative isolate min-h-screen">
       <div className="mx-auto max-w-3xl px-4 py-10 text-[15px] sm:px-6 sm:text-base lg:px-8">
         <SiteNav />
-        <article className="prose prose-zinc max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-p:leading-relaxed prose-li:leading-relaxed">
+        <article className="prose prose-zinc max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-p:leading-relaxed prose-li:leading-relaxed prose-table:block prose-table:overflow-x-auto prose-table:whitespace-nowrap">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
