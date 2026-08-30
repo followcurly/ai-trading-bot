@@ -37,12 +37,42 @@ Details live on [Architecture](/architecture) and [Flow](/flow).
 I am keeping the scoreboard simple so I cannot kid myself:
 
 - **Paper equity** vs the ~$84k starting line for v2  
+- **Same-dollar S&amp;P hold** — buy SPY on day one and do nothing  
 - **Drawdown** from peak  
 - **Buys placed** (and whether I stick to one per sleeve per day)  
 - **Sleeve weights** vs the 50 / 25 / 25 targets  
 - **Journal completeness** — every scan leaves a receipt  
 
 If those numbers do not improve under a rule I can explain in one sentence, I do not get to add machinery.
+
+## I checked the scoreboard
+
+Four weeks in — Jul 31 to Aug 28, 2026. I kept the leftover book. Last mark is about **$85,180** against the **$84,195** v2 line: **+1.2%**. Peak poked **$85,735**. Cash is **$0**. Twenty placed buys, seven holdings.
+
+Sleeves vs the 50 / 25 / 25 targets: core ~**44%**, dividend ~**26%**, growth ~**30%**. I am a bit light on core and a bit heavy on growth. One alternate (SPLG) is not tradable on this paper account; I bought VOO / VTI instead.
+
+The boring bar is the same dollars, day one, in SPY.
+
+![live vs spy](/research-examples/v2-live-vs-spy.svg)
+
+Live, that S&amp;P hold is **+3.0%**. I am **+1.2%**. I spent early weeks with cash waiting for red days while the index ran.
+
+I also ran the same rule in the backtester (paper mix, next-open fills, 5 bps, no year-end skim — does not touch the live book):
+
+| Window | Red-day | S&amp;P hold | vs S&amp;P |
+| --- | --- | --- | --- |
+| Live (4 weeks) | +1.2% | +3.0% | −1.8 pts |
+| 1 year | +22.3% | +37.8% | −15.5 pts |
+| 3 years | +67.5% | +71.3% | −3.8 pts |
+| ~6 years (incl. 2022) | +143.5% | +130.5% | +13.1 pts |
+
+![3y overlay](/research-examples/v2-vs-spy-backtest.svg)
+
+On the 1-year and 3-year windows, **buying the mix on day one beat SPY** (+42.2% and +77.3%). The red-day gap is not the ETFs. It is **sitting in cash** until something is red.
+
+The ~6-year window is the exception: waiting for red days beat a day-one SPY hold, with a deeper max drawdown (~23%). QQQM was not listed at the 2020 open, so that mix is not a clean apples-to-apples.
+
+I am not expanding the rule yet. This bull stretch has not earned it.
 
 ## Where I hope to go
 
