@@ -30,7 +30,7 @@ def resolve_universe(name: str | None = None) -> FundUniverse:
                     name="core",
                     target_pct=0.30,
                     primary="VOO",
-                    tickers=("VOO", "VTI", "SPLG"),
+                    tickers=("VOO", "VTI", "SPYM"),
                 ),
             )
         )
@@ -48,7 +48,7 @@ def resolve_universe(name: str | None = None) -> FundUniverse:
                     name="core",
                     target_pct=0.30,
                     primary="VOO",
-                    tickers=("VOO", "VTI", "SPLG"),
+                    tickers=("VOO", "VTI", "SPYM"),
                 ),
             )
         )
