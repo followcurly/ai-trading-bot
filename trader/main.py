@@ -1,6 +1,7 @@
 """v2 red-day buy & hold — per-ticker red + underweight sleeve → market buy.
 
-No LLM. No auto-sell. Scans twice daily (default 10:30 + 15:30 ET) so late-day
+No LLM. No auto-sell. When fully invested, red candidates are journaled
+as HOLD skip=no_cash. Scans twice daily (default 10:30 + 15:30 ET) so late-day
 red can still trigger buys. Same sleeve is not bought twice in one session.
 """
 
@@ -25,6 +26,7 @@ from trader.config import (
     ALPACA_PAPER,
     DB_PATH,
     RED_DAY_BUY_PCT,
+    RED_DAY_MIN_NOTIONAL,
     RED_DAY_SCAN_TIMES_ET,
     REPO_ROOT,
     TRADING_PROFILE,
@@ -308,13 +310,34 @@ def run_cycle(*, force: bool = False, dry_run: bool = False) -> dict:
         holds += 1
 
     remaining_cash = cash
+    skipped_no_cash = 0
     for cand in candidates:
-        if remaining_cash < 10:
-            break
         sig = cand.signal
         ret_s = (
             f"{sig.day_return * 100:.2f}%" if sig.day_return is not None else "n/a"
         )
+        if remaining_cash < RED_DAY_MIN_NOTIONAL:
+            # Fully invested (no deposits, no auto-sell): say so in the journal
+            # instead of silently dropping the candidate.
+            reason = (
+                f"ticker_red day_ret={ret_s} sleeve={cand.sleeve.name} "
+                f"skip=no_cash cash={remaining_cash:.2f} scan={scan_label}"
+            )
+            _journal_hold(
+                cand.symbol,
+                {**base_snap, "symbol": cand.symbol, "price": sig.last},
+                reason,
+                {
+                    "day_return": sig.day_return,
+                    "is_red": True,
+                    "sleeve": cand.sleeve.name,
+                    "scan": scan_label,
+                    "skip": "no_cash",
+                },
+            )
+            holds += 1
+            skipped_no_cash += 1
+            continue
         rationale = (
             f"ticker_red day_ret={ret_s} sleeve={cand.sleeve.name} "
             f"buy={cand.symbol} gap={cand.sleeve_weight.gap_pct * 100:.1f}% "
@@ -369,6 +392,7 @@ def run_cycle(*, force: bool = False, dry_run: bool = False) -> dict:
         "holds": holds,
         "candidates": len(candidates),
         "skipped_already_bought": skipped_dup,
+        "skipped_no_cash": skipped_no_cash,
         "equity": equity,
         "dry_run": dry,
     }
