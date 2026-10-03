@@ -37,6 +37,7 @@ def _base_params(args: argparse.Namespace):
         universe=getattr(args, "universe", "balanced"),
         year_end_skim=bool(getattr(args, "year_end_skim", False)),
         skim_pct=float(getattr(args, "skim_pct", 0.10)),
+        skim_gate=str(getattr(args, "skim_gate", "always") or "always"),
         use_cache=not args.no_cache,
     )
 
@@ -181,7 +182,14 @@ def _add_common(p: argparse.ArgumentParser) -> None:
         "--year-end-skim",
         action="store_true",
         dest="year_end_skim",
-        help="Sell skim-pct of each holding at each year-end (add-on to any mode)",
+        help="Sell skim-pct once a year after invest anchor (DCA: after DCA months; not Dec 31)",
+    )
+    p.add_argument(
+        "--skim-gate",
+        choices=("always", "gain"),
+        default="always",
+        dest="skim_gate",
+        help="With --year-end-skim: always, or gain (invested+free must be up by skim-pct)",
     )
     p.add_argument(
         "--red-lookback",
@@ -234,7 +242,7 @@ def _add_common(p: argparse.ArgumentParser) -> None:
         type=float,
         default=0.10,
         dest="skim_pct",
-        help="With --year-end-skim: fraction of each holding to sell at year-end",
+        help="With --year-end-skim: fraction of each holding to sell each anniversary",
     )
     p.add_argument("--no-cache", action="store_true")
 

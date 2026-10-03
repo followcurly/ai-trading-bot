@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timezone
 from typing import Any, Callable
 
@@ -20,6 +20,7 @@ from trader.funds import FundUniverse
 MODES = ("lump_sum", "dca", "buy_hold")
 DCA_CADENCES = ("weekly", "monthly")
 UNIVERSES = ("balanced", "high_yield", "high_appreciation")
+SKIM_GATES = ("always", "gain")
 
 
 def _add_months(d: date, months: int) -> date:
@@ -45,8 +46,9 @@ class BacktestParams:
     dca_cadence: str = "monthly"  # weekly | monthly
     dca_months: int = 6  # deploy over first N months then hold (0 = whole range)
     universe: str = "balanced"  # balanced | high_yield | high_appreciation
-    year_end_skim: bool = False  # optional add-on for any mode
-    skim_pct: float = 0.10  # when year_end_skim: sell this fraction of each holding at year-end
+    year_end_skim: bool = False  # optional annual skim after invest anchor (not Dec 31)
+    skim_pct: float = 0.10  # when year_end_skim: sell this fraction of each holding each anniversary
+    skim_gate: str = "always"  # always | gain (invested+free must be up by skim_pct)
     buy_pct: float | None = None
     min_notional: float | None = None
     oos_frac: float = 0.30
@@ -77,15 +79,29 @@ class BacktestParams:
             raise ValueError("dca_months must be 0..120")
         if self.year_end_skim and not (0.0 < float(self.skim_pct) <= 0.5):
             raise ValueError("skim_pct must be in (0, 0.5] when year_end_skim is on")
+        gate = str(self.skim_gate or "always").strip().lower()
+        if gate not in SKIM_GATES:
+            raise ValueError(f"skim_gate must be one of {SKIM_GATES}")
         # validate universe resolves
         resolve_universe(self.universe)
 
 
+@dataclass
+class SkimState:
+    """Mutable skim ratchet for a single backtest run."""
+
+    baseline: float | None = None  # invested + free at last successful skim / anchor
+    skipped_events: list[dict[str, Any]] = field(default_factory=list)
+
+
 
 def _normalize_params(params: BacktestParams) -> BacktestParams:
-    """Map legacy mode=year_end_skim → buy_hold + year_end_skim flag."""
+    """Map legacy mode=year_end_skim → buy_hold + year_end_skim flag; normalize skim_gate."""
+    gate = str(params.skim_gate or "always").strip().lower() or "always"
     if params.mode == "year_end_skim":
-        return replace(params, mode="buy_hold", year_end_skim=True)
+        return replace(params, mode="buy_hold", year_end_skim=True, skim_gate=gate)
+    if gate != params.skim_gate:
+        return replace(params, skim_gate=gate)
     return params
 
 
@@ -365,7 +381,19 @@ def run_backtest(
             persist=False,
             progress=None,
         )
-        result.setdefault("metrics", {})["skim"] = _skim_compare_metrics(result, twin)
+        skim_meta = _skim_compare_metrics(result, twin)
+        skim_meta["skim_gate"] = str(params.skim_gate or "always")
+        skipped = list(result.pop("skim_skipped_events", []) or [])
+        skim_meta["skipped_events"] = skipped
+        skim_meta["skipped_count"] = len(skipped)
+        if str(params.skim_gate or "always") == "gain":
+            skim_meta["note"] = (
+                "Total equity = invested + cash_free + cash_skim + cash_div. "
+                "Gain gate: skim only when invested+free is up by skim_pct vs last "
+                "successful skim (or invest-anchor) baseline; idle skim/div ignored. "
+                "At most one skim per anniversary; failed years keep the same baseline."
+            )
+        result.setdefault("metrics", {})["skim"] = skim_meta
 
     if persist:
         save_run(result)
@@ -438,7 +466,8 @@ def _skim_compare_metrics(skim_run: dict[str, Any], no_skim_run: dict[str, Any])
         "note": (
             "Total equity = invested + cash_free + cash_skim + cash_div. "
             "Skim cash and dividend cash sit idle (not redeployed). "
-            "No-skim line is the same plan with year-end skim off."
+            "No-skim line is the same plan with annual skim off. "
+            "Skim fires on the anniversary after investment (DCA: after DCA months), not Dec 31."
         ),
     }
 
@@ -454,6 +483,7 @@ def _finalize(
     buy_pct: float,
     min_notional: float,
     strategy_name: str,
+    skim_state: SkimState | None = None,
 ) -> dict[str, Any]:
     last_dt = calendar[-1]
     for t in trades:
@@ -543,6 +573,7 @@ def _finalize(
         "mode": params.mode,
         "year_end_skim": bool(params.year_end_skim),
         "skim_pct": float(params.skim_pct),
+        "skim_gate": str(params.skim_gate or "always"),
         "universe": params.universe,
         "status": "ok",
         "error": None,
@@ -571,6 +602,7 @@ def _finalize(
         },
         "equity": equity_rows,
         "trades": trades,
+        "skim_skipped_events": list(skim_state.skipped_events) if skim_state else [],
     }
 
 
@@ -642,12 +674,93 @@ def _apply_pending_opens(
     return cash, still
 
 
-def _is_last_session_of_year(calendar: pd.DatetimeIndex, i: int) -> bool:
-    """True on the last trading day of a calendar year within the backtest."""
-    dt = calendar[i]
-    if i + 1 >= len(calendar):
-        return dt.month == 12
-    return int(dt.year) != int(calendar[i + 1].year)
+def _add_years(d: date, years: int) -> date:
+    """Add calendar years; clamp Feb 29 → Feb 28 on non-leap targets."""
+    try:
+        return d.replace(year=d.year + years)
+    except ValueError:
+        return d.replace(year=d.year + years, month=2, day=28)
+
+
+def _session_date(ts: pd.Timestamp) -> date:
+    return ts.to_pydatetime().date()
+
+
+def _skim_anchor_date(params: BacktestParams) -> date:
+    """When the 'invested' clock starts for annual skim.
+
+    Lump sum / buy-the-dip: backtest start (capital is at work from day one).
+    DCA: end of the DCA window — skim only after the investment phase finishes,
+    then once a year from that anniversary (not Dec 31).
+    """
+    if params.mode == "dca" and int(params.dca_months) > 0:
+        return _add_months(params.start, int(params.dca_months))
+    return params.start
+
+
+def _is_annual_skim_day(
+    calendar: pd.DatetimeIndex, i: int, anchor: date
+) -> bool:
+    """True on the last trading day on/before each anniversary of ``anchor`` (N≥1 years).
+
+    Skips calendar Dec 31 — first skim is ~1 year after the invest anchor, then yearly.
+    Does not fire on the final backtest session just because a future anniversary exists.
+    """
+    if i < 0 or i >= len(calendar):
+        return False
+    dt = _session_date(calendar[i])
+    end_d = _session_date(calendar[-1])
+    next_d = _session_date(calendar[i + 1]) if i + 1 < len(calendar) else None
+
+    # Cap loop: years from anchor to end + 1
+    max_n = max(1, end_d.year - anchor.year + 2)
+    for n in range(1, max_n + 1):
+        anniversary = _add_years(anchor, n)
+        if anniversary > end_d:
+            return False
+        if dt > anniversary:
+            continue
+        # Last session on or before this anniversary
+        if next_d is None or next_d > anniversary:
+            return True
+        return False
+    return False
+
+
+def _invested_plus_free(
+    cash: CashState,
+    holdings: dict[str, float],
+    bars: dict[str, pd.DataFrame],
+    uni: FundUniverse,
+    dt: pd.Timestamp,
+) -> float:
+    """Working portfolio for skim gate: invested MTM + free cash (idle skim/div ignored)."""
+    total_mtm, _ = _mtm(cash.total, holdings, bars, uni, dt)
+    return float(total_mtm) - float(cash.skim) - float(cash.div)
+
+
+def _maybe_init_skim_baseline(
+    skim_state: SkimState,
+    *,
+    params: BacktestParams,
+    dt: pd.Timestamp,
+    cash: CashState,
+    holdings: dict[str, float],
+    bars: dict[str, pd.DataFrame],
+    uni: FundUniverse,
+) -> None:
+    """On/after invest-anchor day, lock the first gain-gate baseline once."""
+    if not params.year_end_skim:
+        return
+    if str(params.skim_gate or "always") != "gain":
+        return
+    if skim_state.baseline is not None:
+        return
+    anchor = _skim_anchor_date(params)
+    if _session_date(dt) < anchor:
+        return
+    skim_state.baseline = _invested_plus_free(cash, holdings, bars, uni, dt)
+
 
 def _apply_year_end_skim(
     *,
@@ -663,13 +776,52 @@ def _apply_year_end_skim(
     cash: CashState,
     fee_frac: float,
     min_notional: float,
+    skim_state: SkimState | None = None,
 ) -> CashState:
-    """Sell skim_pct of each holding on the last session of each calendar year (idle skim cash)."""
+    """Sell skim_pct of each holding once a year after the invest anchor (idle skim cash).
+
+    Timing is the anniversary of investment (DCA: after DCA months finish), not Dec 31.
+    With skim_gate=gain, only skim when invested+free is up by skim_pct vs baseline.
+    """
     if not params.year_end_skim:
         return cash
-    if not _is_last_session_of_year(calendar, i) or not holdings:
+    anchor = _skim_anchor_date(params)
+    if not _is_annual_skim_day(calendar, i, anchor) or not holdings:
         return cash
+
     skim_pct = float(params.skim_pct)
+    gate = str(params.skim_gate or "always").strip().lower()
+    if gate == "gain":
+        state = skim_state if skim_state is not None else SkimState()
+        invested_free = _invested_plus_free(cash, holdings, bars, uni, dt)
+        if state.baseline is None:
+            # Anchor baseline missed (e.g. empty calendar before first anniversary)
+            state.baseline = invested_free
+            state.skipped_events.append(
+                {
+                    "dt": day_key,
+                    "reason": "no_baseline_yet",
+                    "invested_plus_free": invested_free,
+                    "baseline": invested_free,
+                }
+            )
+            if skim_state is None:
+                pass
+            return cash
+        need = float(state.baseline) * (1.0 + skim_pct)
+        if invested_free + 1e-6 < need:
+            state.skipped_events.append(
+                {
+                    "dt": day_key,
+                    "reason": "below_gate",
+                    "invested_plus_free": invested_free,
+                    "baseline": float(state.baseline),
+                    "need": need,
+                }
+            )
+            return cash
+
+    sold_any = False
     for sym, qty in list(holdings.items()):
         if qty <= 0 or sym not in bars or dt not in bars[sym].index:
             continue
@@ -692,6 +844,12 @@ def _apply_year_end_skim(
         if trades:
             trades[-1].setdefault("meta", {})["note"] = f"year_end_skim_{skim_pct:.0%}"
             trades[-1]["meta"]["cash_bucket"] = "skim"
+            trades[-1]["meta"]["skim_anchor"] = anchor.isoformat()
+            trades[-1]["meta"]["skim_gate"] = gate
+            sold_any = True
+
+    if sold_any and gate == "gain" and skim_state is not None:
+        skim_state.baseline = _invested_plus_free(cash, holdings, bars, uni, dt)
     return cash
 
 
@@ -712,6 +870,7 @@ def _run_buy_hold(
     pending: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
     equity_rows: list[dict[str, Any]] = []
+    skim_state = SkimState()
     spy_bars = bars["SPY"]
     spy_cash, spy_shares = _spy_benchmark(spy_bars, calendar, params.cash, fee_frac)
     bought_sleeve_on_day: set[str] = set()
@@ -759,6 +918,7 @@ def _run_buy_hold(
             cash=cash,
             fee_frac=fee_frac,
             min_notional=min_notional,
+            skim_state=skim_state,
         )
 
         mtm, sleeve_mv = _mtm(cash.total, holdings, bars, uni, dt)
@@ -768,6 +928,15 @@ def _run_buy_hold(
         )
 
         if mtm <= 0 or not _ma_ok(spy_bars, dt, params.ma_filter):
+            _maybe_init_skim_baseline(
+                skim_state,
+                params=params,
+                dt=dt,
+                cash=cash,
+                holdings=holdings,
+                bars=bars,
+                uni=uni,
+            )
             prev_day = dt
             continue
 
@@ -824,6 +993,15 @@ def _run_buy_hold(
                 fee_frac=fee_frac,
                 min_notional=min_notional,
             )
+        _maybe_init_skim_baseline(
+            skim_state,
+            params=params,
+            dt=dt,
+            cash=cash,
+            holdings=holdings,
+            bars=bars,
+            uni=uni,
+        )
         prev_day = dt
 
     return _finalize(
@@ -836,6 +1014,7 @@ def _run_buy_hold(
         buy_pct=buy_pct,
         min_notional=min_notional,
         strategy_name=("red_day_buy_hold_skim" if params.year_end_skim else "red_day_buy_hold"),
+        skim_state=skim_state,
     )
 
 
@@ -985,6 +1164,7 @@ def _run_lump_sum(
     pending: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
     equity_rows: list[dict[str, Any]] = []
+    skim_state = SkimState()
     spy_bars = bars["SPY"]
     spy_cash, spy_shares = _spy_benchmark(spy_bars, calendar, params.cash, fee_frac)
     deployed = False
@@ -1053,12 +1233,22 @@ def _run_lump_sum(
             cash=cash,
             fee_frac=fee_frac,
             min_notional=min_notional,
+            skim_state=skim_state,
         )
 
         mtm, _ = _mtm(cash.total, holdings, bars, uni, dt)
         spy_eq = spy_cash + spy_shares * _px(spy_bars, dt, "close")
         equity_rows.append(
             _equity_row(day_key=day_key, mtm=mtm, spy_eq=spy_eq, cash=cash)
+        )
+        _maybe_init_skim_baseline(
+            skim_state,
+            params=params,
+            dt=dt,
+            cash=cash,
+            holdings=holdings,
+            bars=bars,
+            uni=uni,
         )
 
     return _finalize(
@@ -1071,6 +1261,7 @@ def _run_lump_sum(
         buy_pct=buy_pct,
         min_notional=min_notional,
         strategy_name="lump_sum_skim" if params.year_end_skim else "lump_sum",
+        skim_state=skim_state,
     )
 
 
@@ -1090,6 +1281,7 @@ def _run_dca(
     pending: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
     equity_rows: list[dict[str, Any]] = []
+    skim_state = SkimState()
     spy_bars = bars["SPY"]
     spy_cash, spy_shares = _spy_benchmark(spy_bars, calendar, params.cash, fee_frac)
     div_by_date = _dividend_events_by_date(
@@ -1152,6 +1344,7 @@ def _run_dca(
             cash=cash,
             fee_frac=fee_frac,
             min_notional=min_notional,
+            skim_state=skim_state,
         )
 
         mtm, _ = _mtm(cash.total, holdings, bars, uni, dt)
@@ -1160,29 +1353,35 @@ def _run_dca(
             _equity_row(day_key=day_key, mtm=mtm, spy_eq=spy_eq, cash=cash)
         )
 
-        if day_key not in dca_set or slices_left <= 0:
-            continue
+        if day_key in dca_set and slices_left > 0:
+            budget = min(cash.free, slice_cash)
+            if budget >= min_notional:
+                cash = _buy_sleeve_primaries(
+                    budget=budget,
+                    uni=uni,
+                    bars=bars,
+                    dt=dt,
+                    day_key=day_key,
+                    params=params,
+                    pending=pending,
+                    holdings=holdings,
+                    trades=trades,
+                    cash=cash,
+                    fee_frac=fee_frac,
+                    min_notional=min_notional,
+                    meta_note=f"dca_{params.dca_cadence}_{params.dca_months}m",
+                )
+                slices_left -= 1
 
-        budget = min(cash.free, slice_cash)
-        if budget < min_notional:
-            continue
-
-        cash = _buy_sleeve_primaries(
-            budget=budget,
-            uni=uni,
-            bars=bars,
-            dt=dt,
-            day_key=day_key,
+        _maybe_init_skim_baseline(
+            skim_state,
             params=params,
-            pending=pending,
-            holdings=holdings,
-            trades=trades,
+            dt=dt,
             cash=cash,
-            fee_frac=fee_frac,
-            min_notional=min_notional,
-            meta_note=f"dca_{params.dca_cadence}_{params.dca_months}m",
+            holdings=holdings,
+            bars=bars,
+            uni=uni,
         )
-        slices_left -= 1
 
     return _finalize(
         params,
@@ -1194,6 +1393,7 @@ def _run_dca(
         buy_pct=buy_pct,
         min_notional=min_notional,
         strategy_name=(f"dca_{params.dca_cadence}_{params.dca_months}m_skim" if params.year_end_skim else f"dca_{params.dca_cadence}_{params.dca_months}m"),
+        skim_state=skim_state,
     )
 
 

@@ -143,10 +143,9 @@
   <nav class="nav">
     <a href="/?token={{ query_token | urlencode }}">Cycles</a>
     <a href="/positions?token={{ query_token | urlencode }}">Positions</a>
-    <a href="/flow?token={{ query_token | urlencode }}">Flow</a>
+    <a href="/backtest?token={{ query_token | urlencode }}">Backtest</a>
     <a href="/architecture?token={{ query_token | urlencode }}">Architecture</a>
-    <a href="/research?token={{ query_token | urlencode }}">Research</a>
-    <a href="/blog?token={{ query_token | urlencode }}">{{ blog.nav_label }}</a>
+    <a href="https://app.alpaca.markets/paper/dashboard/overview" target="_blank" rel="noopener noreferrer">Alpaca</a>
     <span class="muted">Read-only — fills on <strong>Alpaca paper</strong></span>
   </nav>
   {% block body %}{% endblock %}

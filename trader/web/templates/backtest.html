@@ -171,6 +171,7 @@
         <input type="hidden" name="ma_filter" value=""/>
         <input type="hidden" name="year_end_skim" id="year_end_skim" value="0"/>
         <input type="hidden" name="skim_pct" id="skim_pct" value="0.10"/>
+        <input type="hidden" name="skim_gate" id="skim_gate" value="always"/>
         <input type="hidden" name="compare_kind" id="compare_kind" value=""/>
         <input type="hidden" name="compare_values" id="compare_values" value=""/>
 
@@ -205,16 +206,28 @@
         <div class="bt-skim-box" id="skim-box">
           <label class="bt-skim-toggle">
             <input type="checkbox" id="year_end_skim_ui"/>
-            Year-end skim (add-on)
+            Annual skim after investment (add-on)
           </label>
-          <p class="bt-help">Optional for any plan: each Dec 31 (last trading day) sell a % of every holding for cash on hand.</p>
+          <p class="bt-help">
+            Optional for any plan: once a year <em>after you’re invested</em> (lump sum / buy-the-dip: from start;
+            DCA: after the DCA months finish), sell a % of every holding for cash. Not a fixed Dec&nbsp;31 withdrawal.
+          </p>
           <div id="skim-pct-wrap" style="display:none;margin-top:0.5rem">
             <label for="skim_pct_ui">Skim size</label>
             <select id="skim_pct_ui">
-              <option value="0.05">Sell 5% of holdings each year-end</option>
-              <option value="0.10" selected>Sell 10% of holdings each year-end</option>
-              <option value="0.20">Sell 20% of holdings each year-end</option>
+              <option value="0.05">Sell 5% of holdings each year</option>
+              <option value="0.10" selected>Sell 10% of holdings each year</option>
+              <option value="0.20">Sell 20% of holdings each year</option>
             </select>
+            <label for="skim_gate_ui" style="margin-top:0.65rem">When to skim</label>
+            <select id="skim_gate_ui">
+              <option value="always" selected>Every anniversary</option>
+              <option value="gain">Only if portfolio is up by skim %</option>
+            </select>
+            <p class="bt-help">
+              Gain gate: skim only when invested + free cash is up by the skim size vs the last successful skim
+              (or invest-anchor baseline). Idle skim/yield cash is ignored. Skipped years keep the same baseline.
+            </p>
           </div>
         </div>
 
@@ -385,6 +398,8 @@
   const yearEndSkimUi = document.getElementById("year_end_skim_ui");
   const skimPct = document.getElementById("skim_pct");
   const skimPctUi = document.getElementById("skim_pct_ui");
+  const skimGate = document.getElementById("skim_gate");
+  const skimGateUi = document.getElementById("skim_gate_ui");
   const skimPctWrap = document.getElementById("skim-pct-wrap");
   const dipOpts = document.getElementById("dip-opts");
   const modeHelp = document.getElementById("mode-help");
@@ -433,6 +448,7 @@
     yearEndSkim.value = on ? "1" : "0";
     skimPctWrap.style.display = on ? "" : "none";
     skimPct.value = skimPctUi.value || "0.10";
+    if (skimGate && skimGateUi) skimGate.value = skimGateUi.value || "always";
   }
   function syncUniUi() {
     const checked = document.querySelector('input[name="universe_ui"]:checked');
@@ -493,6 +509,7 @@
   redLookbackUi.addEventListener("change", syncModeUi);
   yearEndSkimUi.addEventListener("change", syncSkimUi);
   skimPctUi.addEventListener("change", syncSkimUi);
+  if (skimGateUi) skimGateUi.addEventListener("change", syncSkimUi);
   syncModeUi();
   syncSkimUi();
   syncUniUi();
