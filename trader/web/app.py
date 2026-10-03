@@ -19,17 +19,11 @@ from fastapi.responses import (
     PlainTextResponse,
     RedirectResponse,
 )
+from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from trader.alpaca_runtime import trading_client
 from trader.config import TRADE_LOG_VIEW_TOKEN, TRADING_PROFILE
-from trader.research.eval_pack import PROMOTION_THRESHOLDS, build_eval_pack
-from trader.research.narrative import (
-    ACTION_GLOSSARY,
-    EXIT_GLOSSARY,
-    build_research_narrative,
-)
-from trader.reporting.research_charts import build_research_charts
 from trader.db import connect as _db_connect
 from trader.market_hours import is_us_equity_rth
 from trader.web.blog_config import BlogConfig
@@ -117,6 +111,23 @@ def _smoke_render_templates() -> None:
         "positions": [],
         "positions_error": None,
         "account_strip": None,
+        # tax.html
+        "form": {
+            "entity": "individual_single",
+            "ordinary_income": 0.0,
+            "short_term_gains": 0.0,
+            "qualified_dividends": 0.0,
+            "long_term_gains": 0.0,
+            "other_investment_income": 0.0,
+            "deduction": None,
+            "run_id": "",
+        },
+        "result": None,
+        "error": None,
+        "entity_label": None,
+        "prefill_note": None,
+        # backtest_compare.html
+        "payload": {"runs": [], "equity": [], "trades": [], "metrics": {}},
         "row": {
             "id": 1,
             "timestamp": "2026-01-01T12:00:00+00:00",
@@ -140,6 +151,39 @@ def _smoke_render_templates() -> None:
         "exec_order_id": None,
         "pipeline": None,
         "display_rationale": "—",
+
+        # backtest templates
+        "runs": [],
+        "default_start": "2025-01-01",
+        "default_end": "2026-01-01",
+        "default_cash": 100000,
+        "error": None,
+        "run": {
+            "id": "smoke",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "start_date": "2025-01-01",
+            "end_date": "2026-01-01",
+            "cash": 100000.0,
+            "cost_bps": 5.0,
+            "fill_rule": "next_open",
+            "status": "ok",
+            "metrics": {
+                "full": {
+                    "total_return": 0.0,
+                    "vs_spy": 0.0,
+                    "max_drawdown": 0.0,
+                    "cagr": 0.0,
+                },
+                "is": {"total_return": 0.0, "vs_spy": 0.0},
+                "oos": {"total_return": 0.0, "vs_spy": 0.0},
+                "split_date": "2025-09-01",
+                "trade_count": 0,
+            },
+            "trades": [],
+            "equity": [],
+        },
+        "payload": {"equity": [], "trades": [], "metrics": {}},
+
         # blog templates
         "posts": [],
         "post": {
@@ -162,14 +206,47 @@ def _smoke_render_templates() -> None:
             "headline": "Smoke",
             "bullets": [],
             "warnings": [],
-            "action_glossary": ACTION_GLOSSARY,
-            "exit_glossary": EXIT_GLOSSARY,
+            "action_glossary": {},
+            "exit_glossary": {},
         },
-        "action_glossary": ACTION_GLOSSARY,
-        "exit_glossary": EXIT_GLOSSARY,
+        "action_glossary": {},
+        "exit_glossary": {},
         "by_action": {},
         "by_execute_status": {},
         "exit_reason_counts": {},
+        "summary": {
+            "version": 1,
+            "title": "v1 trading experiment",
+            "retired": "2026-07-30",
+            "why": "smoke",
+            "empty": True,
+            "total_cycles": 0,
+            "unique_symbols": 0,
+            "orders_placed": 0,
+            "orders_errored": 0,
+            "period": {"start": None, "end": None},
+            "equity": {
+                "start": 100000.0,
+                "end": 100000.0,
+                "peak": 100000.0,
+                "floor": 100000.0,
+                "pnl": 0.0,
+                "pnl_pct": 0.0,
+                "max_drawdown": 0.0,
+                "max_drawdown_pct": 0.0,
+            },
+            "actions": [],
+            "execute_status": [],
+            "buy_strategies": [],
+            "profiles": [],
+            "top_symbols_placed": [],
+            "artifacts": {
+                "db": "data/archive/v1/trades.db",
+                "jsonl": "data/archive/v1/journal.jsonl",
+                "code": "archive/v1/",
+                "tarball": "/srv/archive/ai-trading-bot-v1-20260730.tar.gz",
+            },
+        },
     }
     failures: list[tuple[str, str]] = []
     for name in sorted(templates.env.list_templates()):
@@ -198,6 +275,10 @@ def _architecture_md_path() -> Path:
     return _DEFAULT_ARCHITECTURE_MD
 
 app = FastAPI(title="Trade logic", docs_url=None, redoc_url=None)
+
+_STATIC_DIR = _DIR / "static"
+if _STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
 @app.middleware("http")
@@ -558,19 +639,75 @@ def healthz() -> Any:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=503)
 
 
+def _v1_summary_context(request: Request) -> dict[str, Any]:
+    """Shared context for frozen v1 summary page."""
+    from trader.v1_summary import build_v1_summary
+
+    qtok = request.query_params.get("token") or ""
+    archive_summary = _REPO_ROOT / "data" / "archive" / "v1" / "summary.json"
+    archive_db = _REPO_ROOT / "data" / "archive" / "v1" / "trades.db"
+    summary: dict[str, Any]
+    if archive_summary.is_file():
+        try:
+            summary = json.loads(archive_summary.read_text(encoding="utf-8"))
+        except Exception:
+            summary = (
+                build_v1_summary(archive_db)
+                if archive_db.is_file()
+                else {"empty": True, "retired": "2026-07-30", "title": "v1"}
+            )
+    elif archive_db.is_file():
+        summary = build_v1_summary(archive_db)
+    else:
+        summary = {
+            "version": 1,
+            "title": "v1 trading experiment",
+            "retired": "2026-07-30",
+            "empty": True,
+            "total_cycles": 0,
+        }
+
+    live_acct: dict[str, Any] | None = None
+    try:
+        tc = trading_client()
+        a = tc.get_account()
+        live_acct = {
+            "equity": float(a.equity),
+            "cash": float(a.cash),
+            "open_positions": len(tc.get_all_positions()),
+        }
+    except Exception:
+        live_acct = None
+
+    return {
+        "query_token": qtok,
+        "page_title": "v1 experiment — closed",
+        "summary": summary,
+        "live_account": live_acct,
+    }
+
+
+@app.get("/architecture/v1", response_class=HTMLResponse)
+def architecture_v1_page(request: Request) -> Any:
+    """Frozen v1 experiment summary (subpage of Architecture)."""
+    return templates.TemplateResponse(request, "v1.html", _v1_summary_context(request))
+
+
+@app.get("/v1")
+def v1_redirect(request: Request) -> RedirectResponse:
+    q = request.url.query
+    loc = "/architecture/v1" + (f"?{q}" if q else "")
+    return RedirectResponse(loc, status_code=307)
+
+
 @app.get("/report/latest.md")
 def latest_weekly_report() -> PlainTextResponse:
-    """Latest Sonnet weekly blog Markdown (same token guard as other routes)."""
-    try:
-        from trader.reporting.weekly_report import reports_dir
-
-        p = reports_dir() / "LATEST_REVIEW.md"
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e)) from e
+    """v1 weekly Sonnet review retired — serve static file if present."""
+    p = _REPO_ROOT / "data" / "reports" / "LATEST_REVIEW.md"
     if not p.is_file():
         raise HTTPException(
             status_code=404,
-            detail="No weekly report yet. Run: python -m trader.weekly_review",
+            detail="v1 weekly review retired; no LATEST_REVIEW.md on disk.",
         )
     return PlainTextResponse(
         p.read_text(encoding="utf-8"),
@@ -650,38 +787,403 @@ def index(request: Request) -> Any:
     )
 
 
-@app.get("/research", response_class=HTMLResponse)
-def research_page(request: Request) -> Any:
+@app.get("/research")
+def research_redirect(request: Request) -> RedirectResponse:
+    q = request.url.query
+    loc = "/backtest" + (f"?{q}" if q else "")
+    return RedirectResponse(loc, status_code=307)
+
+
+# --- backtest sidecar routes ---
+@app.get("/backtest", response_class=HTMLResponse)
+def backtest_home(request: Request) -> Any:
+    from datetime import date as _date
+
+    from trader.backtest.store import list_runs
+
     qtok = request.query_params.get("token") or ""
-    prof = (request.query_params.get("profile") or TRADING_PROFILE).strip().lower()
-    try:
-        days = max(1, min(365, int(request.query_params.get("days") or "30")))
-    except ValueError:
-        days = 30
-    pack = build_eval_pack(days=days, profile=prof)
-    charts = build_research_charts(pack)
-    narrative = build_research_narrative(pack)
+    today = _date.today()
+    start = today.replace(year=today.year - 1)
     return templates.TemplateResponse(
         request,
-        "research.html",
+        "backtest.html",
         {
+            "request": request,
+            "page_title": "Backtest lab",
             "query_token": qtok,
-            "page_title": f"Research — {prof}",
-            "profile": prof,
-            "trading_profile": TRADING_PROFILE,
-            "days": days,
-            "charts": charts,
-            "narrative": narrative,
-            "action_glossary": narrative.get("action_glossary") or ACTION_GLOSSARY,
-            "exit_glossary": narrative.get("exit_glossary") or EXIT_GLOSSARY,
-            "by_action": pack.get("by_action") or {},
-            "by_execute_status": pack.get("by_execute_status") or {},
-            "exit_reason_counts": pack.get("exit_reason_counts") or {},
-            "promotion": pack.get("promotion_metrics") or {},
-            "thresholds": pack.get("thresholds") or PROMOTION_THRESHOLDS,
-            "closed_trades": pack.get("closed_trades") or [],
+            "runs": list_runs(50),
+            "default_start": start.isoformat(),
+            "default_end": today.isoformat(),
+            "default_cash": 100000,
+            "error": request.query_params.get("error") or None,
         },
     )
+
+
+@app.post("/backtest/run")
+async def backtest_run(request: Request) -> Any:
+    from datetime import date as _date
+    from urllib.parse import quote
+
+    from trader.backtest.engine import (
+        MODES,
+        UNIVERSES,
+        BacktestParams,
+        run_backtest,
+        run_lookback_compare,
+        run_strategy_compare,
+        run_universe_compare,
+    )
+
+    qtok = request.query_params.get("token") or ""
+    form = await request.form()
+    token = str(form.get("token") or qtok or "")
+
+    def _redir_err(msg: str) -> RedirectResponse:
+        loc = f"/backtest?token={quote(token)}&error={quote(msg)}"
+        return RedirectResponse(loc, status_code=303)
+
+    def _truthy(raw: Any) -> bool:
+        return str(raw or "").strip().lower() in ("1", "on", "true", "yes")
+
+    try:
+        start = _date.fromisoformat(str(form.get("start") or "").strip())
+        end = _date.fromisoformat(str(form.get("end") or "").strip())
+        cash = float(form.get("cash") or 100000)
+        cost_bps = float(form.get("cost_bps") or 5)
+        fill_rule = str(form.get("fill_rule") or "next_open").strip()
+        if fill_rule not in ("next_open", "same_close"):
+            fill_rule = "next_open"
+
+        mode = str(form.get("mode") or "buy_hold").strip().lower()
+        if mode == "year_end_skim":
+            mode = "buy_hold"
+        if mode not in MODES:
+            mode = "buy_hold"
+
+        universe = str(form.get("universe") or "balanced").strip().lower()
+        if universe not in UNIVERSES:
+            universe = "balanced"
+
+        dca_cadence = str(form.get("dca_cadence") or "monthly").strip().lower()
+        if dca_cadence not in ("weekly", "monthly"):
+            dca_cadence = "monthly"
+        try:
+            dca_months = int(form.get("dca_months") or 6)
+        except (TypeError, ValueError):
+            dca_months = 6
+
+        try:
+            red_lookback = int(form.get("red_lookback") or 1)
+        except (TypeError, ValueError):
+            red_lookback = 1
+        if red_lookback not in (1, 2, 3):
+            red_lookback = 1
+
+        try:
+            min_consecutive_reds = int(form.get("min_consecutive_reds") or 1)
+        except (TypeError, ValueError):
+            min_consecutive_reds = 1
+        if min_consecutive_reds not in (1, 2, 3):
+            min_consecutive_reds = 1
+
+        raw_down = float(form.get("min_down_pct") or 0)
+        min_down_pct = raw_down / 100.0 if raw_down > 1 else raw_down
+
+        ma_raw = str(form.get("ma_filter") or "").strip().lower()
+        ma_filter: int | None = None
+        if ma_raw and ma_raw not in ("0", "none", ""):
+            try:
+                ma_filter = int(ma_raw)
+            except (TypeError, ValueError):
+                ma_filter = None
+            if ma_filter not in (50, 100, 200):
+                ma_filter = None
+
+        year_end_skim = _truthy(form.get("year_end_skim"))
+        try:
+            skim_pct = float(form.get("skim_pct") or 0.10)
+        except (TypeError, ValueError):
+            skim_pct = 0.10
+        skim_gate = str(form.get("skim_gate") or "always").strip().lower()
+        if skim_gate not in ("always", "gain"):
+            skim_gate = "always"
+
+        params = BacktestParams(
+            start=start,
+            end=end,
+            cash=cash,
+            cost_bps=cost_bps,
+            fill_rule=fill_rule,
+            mode=mode,
+            red_lookback=red_lookback,
+            min_consecutive_reds=min_consecutive_reds,
+            min_down_pct=min_down_pct,
+            ma_filter=ma_filter,
+            dca_cadence=dca_cadence,
+            dca_months=dca_months,
+            universe=universe,
+            year_end_skim=year_end_skim,
+            skim_pct=skim_pct,
+            skim_gate=skim_gate,
+        )
+
+        compare_kind = str(form.get("compare_kind") or "").strip().lower()
+        compare_values = [
+            v.strip()
+            for v in str(form.get("compare_values") or "").split(",")
+            if v.strip()
+        ]
+        # Legacy checkbox: compare all three lookbacks
+        if not compare_kind and _truthy(form.get("compare_lookbacks")):
+            compare_kind = "lookback"
+            compare_values = ["1", "2", "3"]
+
+        if compare_kind and len(compare_values) >= 2:
+            if compare_kind == "strategy":
+                out = run_strategy_compare(params, modes=compare_values)
+            elif compare_kind == "universe":
+                out = run_universe_compare(params, universes=compare_values)
+            elif compare_kind == "lookback":
+                lookbacks = []
+                for v in compare_values:
+                    try:
+                        lookbacks.append(int(v))
+                    except (TypeError, ValueError):
+                        continue
+                out = run_lookback_compare(params, lookbacks=lookbacks)
+            else:
+                return _redir_err(
+                    f"Unknown compare_kind {compare_kind!r}; "
+                    "use strategy, universe, or lookback"
+                )
+            ids = ",".join(out["ids"])
+            kind_q = quote(compare_kind)
+            loc = (
+                f"/backtest/compare?ids={quote(ids)}"
+                f"&kind={kind_q}&token={quote(token)}"
+            )
+            return RedirectResponse(loc, status_code=303)
+
+        result = run_backtest(params, persist=True)
+    except Exception as e:
+        return _redir_err(str(e)[:400])
+
+    loc = f"/backtest/{result['id']}?token={quote(token)}"
+    return RedirectResponse(loc, status_code=303)
+
+
+def _backtest_run_label(run: dict[str, Any], *, compare_kind: str | None = None) -> str:
+    """Human label for a saved run on the compare page / chart legend."""
+    mode = str(run.get("mode") or (run.get("params") or {}).get("mode") or "buy_hold")
+    if mode == "year_end_skim":
+        mode = "buy_hold"
+    skim = bool(run.get("year_end_skim")) or bool(
+        (run.get("params") or {}).get("year_end_skim")
+    )
+    universe = str(
+        run.get("universe") or (run.get("params") or {}).get("universe") or "balanced"
+    )
+    lb = int(
+        run.get("red_lookback")
+        or (run.get("params") or {}).get("red_lookback")
+        or 1
+    )
+    mode_labels = {
+        "lump_sum": "Lump sum",
+        "dca": "DCA",
+        "buy_hold": "Buy the dip",
+    }
+    plan = mode_labels.get(mode, mode)
+    if skim:
+        plan = f"{plan} +skim"
+
+    if compare_kind == "universe":
+        return universe
+    if compare_kind == "lookback":
+        return f"{lb}d red"
+    if compare_kind == "strategy":
+        return plan
+    # Mixed / unknown: include the distinctive bits
+    if mode == "buy_hold":
+        return f"{plan} · {lb}d · {universe}"
+    return f"{plan} · {universe}"
+
+
+@app.get("/backtest/compare", response_class=HTMLResponse)
+def backtest_compare(request: Request) -> Any:
+    from trader.backtest.store import load_run
+
+    qtok = request.query_params.get("token") or ""
+    kind = (request.query_params.get("kind") or "").strip().lower() or None
+    ids_raw = (request.query_params.get("ids") or "").strip()
+    ids = [x.strip() for x in ids_raw.split(",") if x.strip()]
+    runs = []
+    for rid in ids:
+        r = load_run(rid)
+        if r:
+            runs.append(r)
+
+    # Infer compare kind from run diversity when not passed
+    if not kind and runs:
+        modes = {
+            str(r.get("mode") or (r.get("params") or {}).get("mode") or "buy_hold")
+            for r in runs
+        }
+        unis = {
+            str(r.get("universe") or (r.get("params") or {}).get("universe") or "balanced")
+            for r in runs
+        }
+        lbs = {
+            int(
+                r.get("red_lookback")
+                or (r.get("params") or {}).get("red_lookback")
+                or 1
+            )
+            for r in runs
+        }
+        if len(modes) > 1:
+            kind = "strategy"
+        elif len(unis) > 1:
+            kind = "universe"
+        elif len(lbs) > 1:
+            kind = "lookback"
+
+    title_by_kind = {
+        "strategy": "Plan compare",
+        "universe": "ETF mix compare",
+        "lookback": "Lookback compare",
+    }
+    title = title_by_kind.get(kind or "", "Compare")
+
+    rows = []
+    best_ret = None
+    for r in runs:
+        m = r.get("metrics") or {}
+        full = m.get("full") or {}
+        oos = m.get("oos") or {}
+        ret = full.get("total_return")
+        mode = str(r.get("mode") or (r.get("params") or {}).get("mode") or "buy_hold")
+        if mode == "year_end_skim":
+            mode = "buy_hold"
+        universe = str(
+            r.get("universe") or (r.get("params") or {}).get("universe") or "balanced"
+        )
+        lb = int(
+            r.get("red_lookback")
+            or (r.get("params") or {}).get("red_lookback")
+            or 1
+        )
+        row = {
+            "id": r["id"],
+            "label": _backtest_run_label(r, compare_kind=kind),
+            "mode": mode,
+            "universe": universe,
+            "lookback": lb,
+            "total_return": ret,
+            "vs_spy": full.get("vs_spy"),
+            "max_drawdown": full.get("max_drawdown"),
+            "cagr": full.get("cagr"),
+            "trade_count": m.get("trade_count") or 0,
+            "dividend_cash": (m.get("dividends") or {}).get("total_cash"),
+            "oos_return": oos.get("total_return"),
+            "best_return": False,
+        }
+        rows.append(row)
+        if ret is not None and (best_ret is None or ret > best_ret):
+            best_ret = ret
+    for row in rows:
+        if best_ret is not None and row["total_return"] == best_ret:
+            row["best_return"] = True
+
+    if kind == "lookback":
+        rows.sort(key=lambda x: x["lookback"])
+    elif kind == "universe":
+        rows.sort(key=lambda x: x["universe"])
+    else:
+        rows.sort(key=lambda x: x["label"])
+
+    meta = None
+    if runs:
+        r0 = runs[0]
+        meta = {
+            "start_date": r0["start_date"],
+            "end_date": r0["end_date"],
+            "cash": r0["cash"],
+            "fill_rule": r0["fill_rule"],
+            "cost_bps": r0["cost_bps"],
+            "universe": r0.get("universe")
+            or (r0.get("params") or {}).get("universe")
+            or "balanced",
+            "mode": r0.get("mode") or (r0.get("params") or {}).get("mode") or "buy_hold",
+        }
+        if kind == "strategy":
+            meta.pop("mode", None)
+        if kind == "universe":
+            meta.pop("universe", None)
+
+    # Overlay series: each run + SPY from first run
+    series = []
+    for r in runs:
+        eq = r.get("equity") or []
+        series.append(
+            {
+                "label": _backtest_run_label(r, compare_kind=kind),
+                "labels": [p["dt"] for p in eq],
+                "values": [p["strategy_equity"] for p in eq],
+            }
+        )
+    if runs:
+        eq0 = runs[0].get("equity") or []
+        series.append(
+            {
+                "label": "SPY B&H",
+                "labels": [p["dt"] for p in eq0],
+                "values": [p["spy_equity"] for p in eq0],
+            }
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "backtest_compare.html",
+        {
+            "request": request,
+            "page_title": title,
+            "title": title,
+            "query_token": qtok,
+            "rows": rows,
+            "meta": meta,
+            "payload": {"series": series, "kind": kind},
+        },
+    )
+
+
+@app.get("/backtest/{run_id}", response_class=HTMLResponse)
+def backtest_result(request: Request, run_id: str) -> Any:
+    from trader.backtest.store import load_run
+
+    qtok = request.query_params.get("token") or ""
+    run = load_run(run_id)
+    payload = None
+    if run:
+        payload = {
+            "id": run["id"],
+            "equity": run.get("equity") or [],
+            "trades": run.get("trades") or [],
+            "metrics": run.get("metrics") or {},
+        }
+    return templates.TemplateResponse(
+        request,
+        "backtest_result.html",
+        {
+            "request": request,
+            "page_title": f"Backtest {run_id}",
+            "query_token": qtok,
+            "run": run,
+            "payload": payload or {"equity": [], "trades": [], "metrics": {}},
+        },
+    )
+
 
 
 def _trail_state_index() -> dict[str, dict[str, Any]]:
@@ -720,7 +1222,7 @@ def positions_page(request: Request) -> Any:
     try:
         from datetime import date as _date
 
-        from trader.options_exec import parse_occ_us_option_symbol
+        from trader.occ import parse_occ_us_option_symbol
 
         try:
             giveback = float(os.getenv("TRAIL_GIVEBACK_PCT", "0.40") or 0.40)
@@ -903,121 +1405,28 @@ def architecture_page(request: Request) -> Any:
         "architecture.html",
         {
             "query_token": qtok,
-            "page_title": "Architecture — how the bot works",
+            "page_title": "Architecture — v2 red-day",
             "architecture_html": html_body,
         },
     )
 
 
-@app.get("/blog", response_class=HTMLResponse)
-def blog_index(request: Request) -> Any:
-    """Human-facing weekly blog — the bot's journal in plain English."""
-    qtok = request.query_params.get("token") or ""
-    from trader.reporting.blog_generator import list_blog_posts
-    posts = list_blog_posts()
-    return templates.TemplateResponse(
-        request,
-        "blog.html",
-        {
-            "query_token": qtok,
-            "page_title": "The Bot's Journal — weekly blog",
-            "posts": posts,
-        },
-    )
+@app.get("/blog")
+def blog_redirect(request: Request) -> RedirectResponse:
+    q = request.url.query
+    loc = "/" + (f"?{q}" if q else "")
+    return RedirectResponse(loc, status_code=307)
 
 
-@app.get("/blog/{slug}", response_class=HTMLResponse)
-def blog_post_page(request: Request, slug: str) -> Any:
-    """Single blog post."""
-    qtok = request.query_params.get("token") or ""
-    from trader.reporting.blog_generator import get_blog_post, list_blog_posts, reports_dir
-
-    post = get_blog_post(slug)
-    if not post:
-        raise HTTPException(404, f"Blog post '{slug}' not found")
-
-    # Load SVG charts sidecar if it exists
-    charts: dict[str, str] = {}
-    charts_path = reports_dir() / f"blog-{slug}.charts.json"
-    if charts_path.is_file():
-        try:
-            charts = json.loads(charts_path.read_text(encoding="utf-8"))
-        except Exception:
-            charts = {}
-
-    # Build prev/next slugs for navigation
-    all_posts = list_blog_posts()
-    slugs = [p["slug"] for p in all_posts]
-    idx = slugs.index(slug) if slug in slugs else -1
-    prev_slug = slugs[idx + 1] if idx >= 0 and idx + 1 < len(slugs) else None
-    next_slug = slugs[idx - 1] if idx > 0 else None
-
-    return templates.TemplateResponse(
-        request,
-        "blog_post.html",
-        {
-            "query_token": qtok,
-            "page_title": post["title"],
-            "post": post,
-            "charts": charts,
-            "prev_slug": prev_slug,
-            "next_slug": next_slug,
-        },
-    )
+@app.get("/blog/{slug}")
+def blog_slug_redirect(request: Request, slug: str) -> RedirectResponse:
+    q = request.url.query
+    loc = "/" + (f"?{q}" if q else "")
+    return RedirectResponse(loc, status_code=307)
 
 
-@app.get("/flow", response_class=HTMLResponse)
-def flow_page(request: Request) -> Any:
-    """Architecture view: how the bot works, end-to-end."""
-    qtok = request.query_params.get("token") or ""
-
-    total_cycles = 0
-    last_cycle_time: str | None = None
-    try:
-        with _conn() as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c, MAX(timestamp) AS t FROM trades"
-            ).fetchone()
-            if row is not None:
-                total_cycles = int(row["c"] or 0)
-                last_cycle_time = row["t"] or None
-    except sqlite3.OperationalError:
-        pass
-
-    def _cadence_line() -> str:
-        base = (
-            "Base: 4× per market day at 10:00, 12:00, 14:00, and 15:30 ET (Mon–Fri), "
-            "±60 s jitter; scans only during US RTH (09:30–16:00 ET, ex-NYSE holidays)."
-        )
-        parts: list[str] = [base]
-        if os.getenv("SCHEDULE_EXTRA_ENABLE", "").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        ):
-            slots = (os.getenv("SCHEDULE_EXTRA_SLOTS") or "11:30,13:30").strip()
-            parts.append(f" Extra cron slots enabled: {slots} ET.")
-        try:
-            hm = int(os.getenv("POSITION_HEALTH_INTERVAL_MIN", "0") or "0")
-        except ValueError:
-            hm = 0
-        if hm > 0:
-            parts.append(f" Position health log every {hm} min (no LLM).")
-        parts.append(
-            " (Env is read from this process — trading-logview may differ from trading-bot.)"
-        )
-        return "".join(parts)
-
-    return templates.TemplateResponse(
-        request,
-        "flow.html",
-        {
-            "query_token": qtok,
-            "total_cycles": total_cycles,
-            "last_cycle_time": last_cycle_time,
-            "scheduler_cadence_line": _cadence_line(),
-            "trading_profile": TRADING_PROFILE,
-            "page_title": "How the bot works — data flow",
-        },
-    )
+@app.get("/flow")
+def flow_redirect(request: Request) -> RedirectResponse:
+    q = request.url.query
+    loc = "/architecture" + (f"?{q}" if q else "")
+    return RedirectResponse(loc, status_code=307)

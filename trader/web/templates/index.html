@@ -7,7 +7,7 @@
 </div>
 {% endif %}
 <h1>Recent cycles</h1>
-<p class="muted">Profile: <code>{{ trading_profile }}</code> · <a href="/research?token={{ query_token | urlencode }}&profile={{ trading_profile | urlencode }}">research charts</a></p>
+<p class="muted">Profile: <code>{{ trading_profile }}</code> · <a href="/architecture?token={{ query_token | urlencode }}">Architecture</a> · <a href="/architecture/v1?token={{ query_token | urlencode }}">v1 closed</a></p>
 <div class="strip">
   {% if last_cycle_time %}
   <span>Last cycle: <strong title="{{ last_cycle_time }}">{{ last_cycle_time | human_timestamp }}</strong></span>

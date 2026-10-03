@@ -39,3 +39,12 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime state (trade DB, journal, logs, backtest store) — backed up via vzdump
+data/

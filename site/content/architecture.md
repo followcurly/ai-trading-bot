@@ -33,7 +33,7 @@ Configuration and API keys live in a host-managed environment file — never in 
 | --- | --- |
 | SQLite journal | `data/logs/trades.db` |
 | JSONL mirror | `data/logs/journal.jsonl` |
-| Fund universe | `data/funds.yaml` |
+| Fund universe | `config/funds.yaml` |
 
 ---
 
@@ -69,7 +69,7 @@ Documented universe (primaries first):
 
 | Sleeve | Target | Primary | Alternates |
 | --- | --- | --- | --- |
-| Core | ~50% | VOO | VTI, IVV, SPLG, VT |
+| Core | ~50% | VOO | VTI, IVV, SPYM, VT |
 | Dividend | ~25% | SCHD | VYM, VIG, DGRO, JEPI |
 | Growth | ~25% | QQQM | QQQ, SCHG, VUG, VGT |
 

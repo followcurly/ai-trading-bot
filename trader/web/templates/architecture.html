@@ -12,6 +12,25 @@
     color: var(--muted);
   }
   .arch-page-actions a { font-weight: 500; }
+  .arch-intro {
+    max-width: 70ch;
+    color: var(--muted);
+    margin: 0 0 1rem;
+  }
+  .diagram-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--row-alt);
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+  }
+  .diagram-card pre.mermaid {
+    background: transparent;
+    color: var(--fg);
+    margin: 0;
+    padding: 0;
+  }
   article.arch-doc {
     max-width: 75ch;
     font-size: 0.95rem;
@@ -85,11 +104,38 @@
 {% endblock %}
 {% block body %}
 <p class="arch-page-actions">
-  <a href="/flow?token={{ query_token | urlencode }}">← Flow diagram</a>
   <a href="/?token={{ query_token | urlencode }}">Cycles</a>
-  <span>Source file in repo: <code>docs/ARCHITECTURE.md</code></span>
+  <a href="/architecture/v1?token={{ query_token | urlencode }}">v1 experiment (closed)</a>
+  <span>Source: <code>docs/ARCHITECTURE.md</code></span>
 </p>
+
+<h1>Architecture — v2 red-day buy &amp; hold</h1>
+<p class="arch-intro">
+  No LLM. Scans at <strong>10:30</strong> and <strong>15:30 ET</strong>. Each fund is checked on its own day return.
+  Red + underweight sleeve → market buy (skip if that sleeve already bought today). Green → skip. Hold forever.
+</p>
+
+<div class="diagram-card" aria-label="v2 strategy flow">
+<pre class="mermaid">
+flowchart LR
+  sched[Scans_1030_and_1530ET] --> eachTicker[Each_listed_ticker]
+  eachTicker -->|green| skip[Skip_HOLD]
+  eachTicker -->|red| under[Sleeve_underweight]
+  under -->|already_bought_today| skip
+  under -->|yes| buy[Market_buy]
+  under -->|no| skip
+  buy --> journal[Journal_row]
+</pre>
+</div>
+
 <article class="arch-doc" aria-label="Architecture reference">
 {{ architecture_html | safe }}
 </article>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  (function () {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "loose" });
+  })();
+</script>
 {% endblock %}

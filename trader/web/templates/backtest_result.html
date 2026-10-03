@@ -113,7 +113,7 @@
         · {{ run.mode | default('buy_hold') }}{% if run.year_end_skim or (run.params or {}).get('year_end_skim') or (run.mode or '') == 'year_end_skim' %} +skim{% endif %}
         · mix {{ run.universe | default('balanced') }}
         {% if (run.mode or 'buy_hold') in ('buy_hold', 'year_end_skim') %}· red {{ run.red_lookback | default(1) }}d{% endif %}
-        {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or (run.mode or '') == 'year_end_skim' %}· skim {{ '%.0f'|format(((run.skim_pct or (run.params or {}).get('skim_pct') or 0.1) * 100)) }}%/yr{% endif %}
+        {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or (run.mode or '') == 'year_end_skim' %}· skim {{ '%.0f'|format(((run.skim_pct or (run.params or {}).get('skim_pct') or 0.1) * 100)) }}%/yr{% if (run.skim_gate or (run.params or {}).get('skim_gate') or 'always') == 'gain' %} (gain gate){% endif %}{% endif %}
         · cash ${{ '%.0f'|format(run.cash) }}
         · fill {{ run.fill_rule }}
         · {{ '%.0f'|format(run.cost_bps) }} bps
@@ -168,10 +168,16 @@
   {% set skim = (run.metrics.skim if run and run.metrics else None) %}
   {% if run.year_end_skim or (run.params or {}).get('year_end_skim') or skim %}
   <section class="bt-skim" id="bt-skim">
-    <h2>Year-end skim — cash vs staying invested</h2>
+    <h2>Annual skim — cash vs staying invested</h2>
     <p class="bt-skim-note">
       Total wealth = invested + free cash + <strong>skim cash</strong> + <strong>yield cash</strong>.
-      Skim and yield both sit idle (not redeployed). Amber is the same plan if you never skimmed.
+      Skim fires once a year after the invest anchor (not Dec 31).
+      {% if skim and skim.skim_gate == 'gain' %}
+      <strong>Gain gate on:</strong> only when invested+free is up by the skim % vs the last successful skim baseline
+      ({{ skim.skipped_count or 0 }} anniversary skip{{ '' if (skim.skipped_count or 0) == 1 else 's' }}).
+      {% endif %}
+      Skim and yield both sit idle (not redeployed).
+      Amber is the same plan if you never skimmed.
     </p>
     <div class="bt-skim-grid">
       <div class="bt-kpi">
@@ -180,7 +186,7 @@
           {% if skim and skim.total_proceeds is not none %}${{ '%.0f'|format(skim.total_proceeds) }}{% else %}—{% endif %}
         </div>
         <div class="muted" style="font-size:0.75rem;margin-top:0.2rem">
-          {% if skim %}{{ skim.event_count or 0 }} year-end sale{{ '' if (skim.event_count or 0) == 1 else 's' }} · {{ '%.0f'|format((skim.skim_pct or 0.1) * 100) }}%/yr{% endif %}
+          {% if skim %}{{ skim.event_count or 0 }} annual sale{{ '' if (skim.event_count or 0) == 1 else 's' }} · {{ '%.0f'|format((skim.skim_pct or 0.1) * 100) }}%/yr{% endif %}
         </div>
       </div>
       <div class="bt-kpi">
@@ -274,7 +280,7 @@
         {% set is_skim = (t.side or '') == 'sell' and 'year_end_skim' in note %}
         {% set is_div = (t.side or '') == 'div' %}
         <tr data-dt="{{ t.dt }}" class="bt-future{% if is_skim %} bt-skim-row{% endif %}" {% if is_skim %}data-skim="1"{% endif %}>
-          <td>{{ t.dt }}{% if is_skim %} <span class="muted" style="font-size:0.75rem">· year-end</span>{% elif is_div %} <span class="muted" style="font-size:0.75rem">· ex-div</span>{% endif %}</td>
+          <td>{{ t.dt }}{% if is_skim %} <span class="muted" style="font-size:0.75rem">· annual skim</span>{% elif is_div %} <span class="muted" style="font-size:0.75rem">· ex-div</span>{% endif %}</td>
           <td>{{ t.sleeve or '—' }}</td>
           <td>{{ t.symbol }}</td>
           <td>
@@ -307,7 +313,7 @@
       <li><strong>buy_hold</strong>: red if <code>close[T] &lt; close[T−N]</code>; buy underweight sleeves; hold. Lookback N only for this plan.</li>
       <li><strong>dca</strong>: split starting cash evenly across the first N months into sleeve primaries, then hold.</li>
       <li><strong>lump_sum</strong>: invest all cash on day one into sleeve primaries, then hold.</li>
-      <li><strong>year-end skim</strong> (optional add-on): on the last trading day of each calendar year, sell a % of every holding for cash. Works with any plan above.</li>
+      <li><strong>annual skim</strong> (optional add-on): once a year after you’re invested (lump sum / buy-the-dip from start; DCA after DCA months), sell a % of every holding for cash — not Dec 31. Optional <strong>gain gate</strong>: only skim when invested+free is up by that skim % vs the last successful skim (or invest-anchor) baseline; skipped years keep the same baseline. Works with any plan above.</li>
       <li>Default fill at next session open (no look-ahead). Same-close fill is optimistic.</li>
       <li>Cost haircut applied per fill (bps). Benchmark is 100% SPY buy &amp; hold from the first open.</li>
       <li>Last 30% of the selected range is tagged out-of-sample. A positive curve is not proof of edge.</li>
@@ -598,7 +604,7 @@
         hidden: true
       },
       {
-        label: "Year-end skim",
+        label: "Annual skim",
         data: [],
         borderColor: "#fbbf24",
         backgroundColor: "#fbbf24",

@@ -1,0 +1,15 @@
+# v2 buy universe — sleeve targets for red-day buy & hold
+# SPLG was renamed SPYM by State Street (Alpaca: "asset not found for SPLG").
+sleeves:
+  core:
+    target_pct: 0.50
+    primary: VOO
+    tickers: [VOO, VTI, IVV, SPYM, VT]
+  dividend:
+    target_pct: 0.25
+    primary: SCHD
+    tickers: [SCHD, VYM, VIG, DGRO, JEPI]
+  growth:
+    target_pct: 0.25
+    primary: QQQM
+    tickers: [QQQ, QQQM, SCHG, VUG, VGT]

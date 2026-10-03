@@ -1,7 +1,8 @@
-"""Load sleeve / fund universe from data/funds.yaml."""
+"""Load sleeve / fund universe from config/funds.yaml (override with FUNDS_PATH)."""
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -11,7 +12,9 @@ import yaml
 
 from trader.config import REPO_ROOT
 
-DEFAULT_FUNDS_PATH = REPO_ROOT / "data" / "funds.yaml"
+DEFAULT_FUNDS_PATH = Path(
+    os.getenv("FUNDS_PATH", str(REPO_ROOT / "config" / "funds.yaml"))
+)
 
 
 @dataclass(frozen=True)
