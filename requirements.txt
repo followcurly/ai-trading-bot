@@ -1,0 +1,13 @@
+# v2 runtime (bot + logview + backtest). Pinned to what runs on CT 202.
+alpaca-py==0.43.3
+APScheduler==3.11.2
+python-dotenv==1.2.2
+PyYAML==6.0.3
+pytz==2026.1.post1
+pandas==3.0.2
+numpy==2.4.4
+fastapi==0.136.1
+starlette==1.0.0
+uvicorn==0.46.0
+Jinja2==3.1.6
+Markdown==3.10.2
